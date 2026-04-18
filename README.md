@@ -10,6 +10,7 @@ A terminal-based full-screen todo application with priority management.
 - ✅ Creation and completion timestamps
 - ✅ Priority ordering (reorder todos)
 - ✅ Persistent storage in JSON format
+- ✅ Optional GitHub Issues-backed storage
 - ✅ Full-screen terminal interface
 
 ## Installation
@@ -51,6 +52,31 @@ Todos are stored in `todos.json` in the current directory. Each todo contains:
 - Finished date (if completed)
 - Status (active/done)
 - Priority (for ordering)
+
+### GitHub Issues storage (optional)
+
+You can store todos as issues in a GitHub repository instead of `todos.json`.
+
+Set these environment variables before running the app:
+
+```bash
+# Example content of a **non-tracked** ./env.sh file 
+> cat ./env.sh
+export TODO_GITHUB_REPO="owner/repo"
+export GITHUB_TOKEN="ghp_your_token_here"
+
+# Source the ./env file before starting...
+> . ./env.sh
+
+# Start
+> ./todo.py
+```
+
+Behavior in GitHub-backed mode:
+- Each todo is stored as an issue
+- Active todos are open issues, done todos are closed issues
+- Priority and internal metadata are saved in a hidden metadata block in the issue body
+- Deleting a todo marks it as deleted and closes its issue
 
 ## Project Structure
 

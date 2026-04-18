@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from models import Todo
 
+GITHUB_ISSUES_PAGE_SIZE = 100
+
 
 class TodoManager:
     def __init__(self, filename: str = "todos.json"):
@@ -13,13 +15,16 @@ class TodoManager:
         self.github_repo = os.environ.get("TODO_GITHUB_REPO")
         self.github_token = os.environ.get("GITHUB_TOKEN")
         self.todos: List[Todo] = []
+        self.last_error: Optional[str] = None
         self.load()
 
     def load(self):
         if self.github_repo:
             try:
                 self.todos = self._load_from_github()
+                self.last_error = None
             except (urllib.error.URLError, json.JSONDecodeError, KeyError, RuntimeError):
+                self.last_error = "Failed to load todos from GitHub issues"
                 self.todos = []
             return
 
@@ -28,9 +33,12 @@ class TodoManager:
                 with open(self.filename, 'r') as f:
                     data = json.load(f)
                     self.todos = [Todo.from_dict(item) for item in data]
+                    self.last_error = None
             except (json.JSONDecodeError, KeyError):
+                self.last_error = "Failed to load todos from local JSON storage"
                 self.todos = []
         else:
+            self.last_error = None
             self.todos = []
 
     def save(self):
@@ -87,11 +95,11 @@ class TodoManager:
             if self.github_repo:
                 self._patch_issue(
                     self._issue_number(todo),
-                    {"body": self._build_issue_body(todo.body, {"priority": todo.priority, "deleted": False})}
+                    {"body": self._build_issue_body(todo.body, self._todo_metadata(priority=todo.priority))}
                 )
                 self._patch_issue(
                     self._issue_number(prev_todo),
-                    {"body": self._build_issue_body(prev_todo.body, {"priority": prev_todo.priority, "deleted": False})}
+                    {"body": self._build_issue_body(prev_todo.body, self._todo_metadata(priority=prev_todo.priority))}
                 )
             self.save()
 
@@ -103,11 +111,11 @@ class TodoManager:
             if self.github_repo:
                 self._patch_issue(
                     self._issue_number(todo),
-                    {"body": self._build_issue_body(todo.body, {"priority": todo.priority, "deleted": False})}
+                    {"body": self._build_issue_body(todo.body, self._todo_metadata(priority=todo.priority))}
                 )
                 self._patch_issue(
                     self._issue_number(next_todo),
-                    {"body": self._build_issue_body(next_todo.body, {"priority": next_todo.priority, "deleted": False})}
+                    {"body": self._build_issue_body(next_todo.body, self._todo_metadata(priority=next_todo.priority))}
                 )
             self.save()
 
@@ -117,7 +125,7 @@ class TodoManager:
                 self._issue_number(todo),
                 {
                     "state": "closed",
-                    "body": self._build_issue_body(todo.body, {"priority": todo.priority, "deleted": True}),
+                    "body": self._build_issue_body(todo.body, self._todo_metadata(priority=todo.priority, deleted=True)),
                 }
             )
             self.load()
@@ -134,7 +142,7 @@ class TodoManager:
                 self._issue_number(todo),
                 {
                     "title": header,
-                    "body": self._build_issue_body(body, {"priority": todo.priority, "deleted": False}),
+                    "body": self._build_issue_body(body, self._todo_metadata(priority=todo.priority)),
                 }
             )
         self.save()
@@ -173,12 +181,12 @@ class TodoManager:
         while True:
             chunk = self._request(
                 "GET",
-                f"/repos/{repo}/issues?state=all&per_page=100&page={page}",
+                f"/repos/{repo}/issues?state=all&per_page={GITHUB_ISSUES_PAGE_SIZE}&page={page}",
             )
             if not chunk:
                 break
             issues.extend(chunk)
-            if len(chunk) < 100:
+            if len(chunk) < GITHUB_ISSUES_PAGE_SIZE:
                 break
             page += 1
         return [issue for issue in issues if "pull_request" not in issue]
@@ -210,7 +218,7 @@ class TodoManager:
         return sorted(todos, key=lambda x: x.priority)
 
     def _create_issue(self, todo: Todo) -> Dict:
-        body = self._build_issue_body(todo.body, {"priority": todo.priority, "deleted": False})
+        body = self._build_issue_body(todo.body, self._todo_metadata(priority=todo.priority))
         return self._request(
             "POST",
             f"/repos/{self.github_repo}/issues",
@@ -252,6 +260,9 @@ class TodoManager:
         if body:
             return f"{body.rstrip()}\n\n<!-- todo-meta: {metadata_blob} -->"
         return f"<!-- todo-meta: {metadata_blob} -->"
+
+    def _todo_metadata(self, priority: int, deleted: bool = False) -> Dict:
+        return {"priority": priority, "deleted": deleted}
 
     def _normalize_timestamp(self, value: Optional[str]) -> Optional[str]:
         if not value:

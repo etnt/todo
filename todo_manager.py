@@ -25,7 +25,7 @@ class TodoManager:
             try:
                 self.todos = self._load_from_github()
                 self.last_error = None
-            except (urllib.error.URLError, json.JSONDecodeError, KeyError, RuntimeError) as error:
+            except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, KeyError) as error:
                 self.last_error = f"Failed to load todos from GitHub issues: {error}"
                 self.todos = []
             return
@@ -81,7 +81,10 @@ class TodoManager:
         if self.github_repo:
             state = "closed" if todo.status == "active" else "open"
             self._patch_issue(self._issue_number(todo), {"state": state})
-            self.load()
+            if state == "closed":
+                todo.mark_done()
+            else:
+                todo.mark_active()
         else:
             if todo.status == "active":
                 todo.mark_done()
@@ -130,7 +133,7 @@ class TodoManager:
                     "body": self._build_issue_body(todo.body, self._todo_metadata(priority=todo.priority, deleted=True)),
                 }
             )
-            self.load()
+            self.todos.remove(todo)
             return
 
         self.todos.remove(todo)

@@ -14,6 +14,8 @@ class TodoManager:
         self.filename = filename
         self.github_repo = os.environ.get("TODO_GITHUB_REPO")
         self.github_token = os.environ.get("GITHUB_TOKEN")
+        if self.github_repo and not self.github_token:
+            raise RuntimeError("GITHUB_TOKEN is required when TODO_GITHUB_REPO is set")
         self.todos: List[Todo] = []
         self.last_error: Optional[str] = None
         self.load()
@@ -23,8 +25,8 @@ class TodoManager:
             try:
                 self.todos = self._load_from_github()
                 self.last_error = None
-            except (urllib.error.URLError, json.JSONDecodeError, KeyError, RuntimeError):
-                self.last_error = "Failed to load todos from GitHub issues"
+            except (urllib.error.URLError, json.JSONDecodeError, KeyError, RuntimeError) as error:
+                self.last_error = f"Failed to load todos from GitHub issues: {error}"
                 self.todos = []
             return
 
@@ -161,9 +163,6 @@ class TodoManager:
         if not self.github_repo:
             raise RuntimeError("GitHub repo is not configured")
 
-        if not self.github_token:
-            raise RuntimeError("GITHUB_TOKEN is required when TODO_GITHUB_REPO is set")
-
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
         request = urllib.request.Request(
             url=f"https://api.github.com{path}",
@@ -193,7 +192,8 @@ class TodoManager:
 
     def _load_from_github(self) -> List[Todo]:
         todos: List[Todo] = []
-        for issue in self._list_issues():
+        issues = sorted(self._list_issues(), key=lambda issue: issue.get("created_at", ""))
+        for idx, issue in enumerate(issues):
             body_text, metadata = self._parse_issue_body(issue.get("body") or "")
             if metadata.get("deleted"):
                 continue
@@ -201,7 +201,10 @@ class TodoManager:
             status = "done" if issue.get("state") == "closed" else "active"
             created_date = self._normalize_timestamp(issue["created_at"])
             finished_date = self._normalize_timestamp(issue.get("closed_at"))
-            priority = int(metadata.get("priority", issue["number"]))
+            try:
+                priority = int(metadata.get("priority", idx))
+            except (TypeError, ValueError):
+                priority = idx
 
             todos.append(
                 Todo(

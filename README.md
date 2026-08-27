@@ -37,10 +37,26 @@ python3 todo.py
 | `d` | Mark selected todo as done/undone (toggle) |
 | `Tab` | Switch between Active/Done/All views |
 | `↑/↓` | Navigate todo list |
-| `Ctrl+↑/↓` | Change priority (move up/down) |
-| `Enter` | View todo details |
+| `p/n` | Change priority (move up/down) |
+| `Enter` | View todo details / (press `e` in details to edit) |
 | `Delete` | Remove todo permanently |
 | `q` | Quit application |
+
+### Editor Controls (when adding/editing todos)
+
+| Key | Action |
+|-----|--------|
+| `Arrow Keys` | Move cursor up, down, left, right |
+| `Home` / `Ctrl+A` | Move cursor to beginning of line |
+| `End` / `Ctrl+E` | Move cursor to end of line |
+| `Backspace` | Delete character before cursor (or merge with previous line) |
+| `Delete` / `Ctrl+D` | Delete character under cursor (or join with next line) |
+| `Ctrl+U` | Delete from cursor to beginning of line |
+| `Ctrl+K` | Delete from cursor to end of line |
+| `Enter` | Move to body (in header) / Insert newline (in body) |
+| `Tab` | Insert indentation (2 spaces) |
+| `Ctrl+G` | Save and finish |
+| `Esc` | Cancel and exit without saving |
 
 ## Data Storage
 

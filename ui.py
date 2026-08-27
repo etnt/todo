@@ -126,6 +126,168 @@ class TodoUI:
         if key == ord('e'):
             self.edit_todo_form(todo)
 
+    def edit_single_line(self, win, y: int, x: int, initial_text: str, max_len: int) -> Optional[str]:
+        """Single-line text editor supporting cursor navigation, backspace, delete, home, end."""
+        text = list(initial_text)
+        cursor_pos = len(text)
+        win.keypad(True)
+        curses.curs_set(1)
+        curses.noecho()
+        
+        while True:
+            display_str = "".join(text)
+            win.addstr(y, x, " " * max_len)
+            
+            if cursor_pos < max_len:
+                view_start = 0
+            else:
+                view_start = cursor_pos - max_len + 1
+            
+            visible_text = display_str[view_start:view_start + max_len]
+            win.addstr(y, x, visible_text)
+            win.move(y, x + (cursor_pos - view_start))
+            win.refresh()
+            
+            ch = win.getch()
+            
+            if ch in (curses.KEY_ENTER, 10, 13):
+                return "".join(text).strip()
+            elif ch == 27:  # Esc
+                return None
+            elif ch in (curses.KEY_LEFT,):
+                if cursor_pos > 0:
+                    cursor_pos -= 1
+            elif ch in (curses.KEY_RIGHT,):
+                if cursor_pos < len(text):
+                    cursor_pos += 1
+            elif ch in (curses.KEY_HOME, 1):  # KEY_HOME or Ctrl+A
+                cursor_pos = 0
+            elif ch in (curses.KEY_END, 5):   # KEY_END or Ctrl+E
+                cursor_pos = len(text)
+            elif ch in (curses.KEY_BACKSPACE, 127, 8):
+                if cursor_pos > 0:
+                    text.pop(cursor_pos - 1)
+                    cursor_pos -= 1
+            elif ch in (curses.KEY_DC, 330, 4):  # KEY_DC or Ctrl+D
+                if cursor_pos < len(text):
+                    text.pop(cursor_pos)
+            elif ch == 21:  # Ctrl+U
+                text = text[cursor_pos:]
+                cursor_pos = 0
+            elif ch == 11:  # Ctrl+K
+                text = text[:cursor_pos]
+            elif 32 <= ch <= 126 or (ch >= 160 and ch <= 0x10ffff):
+                char = chr(ch)
+                text.insert(cursor_pos, char)
+                cursor_pos += 1
+
+    def edit_multiline(self, win, initial_text: str, max_y: int, max_x: int) -> Optional[str]:
+        """Multi-line text editor supporting 2D cursor navigation, line split/merge, deletion, scrolling."""
+        lines = initial_text.split("\n") if initial_text else [""]
+        if not lines:
+            lines = [""]
+        
+        row = 0
+        col = 0
+        scroll_y = 0
+        scroll_x = 0
+        win.keypad(True)
+        curses.curs_set(1)
+        curses.noecho()
+        
+        while True:
+            row = max(0, min(row, len(lines) - 1))
+            col = max(0, min(col, len(lines[row])))
+            
+            if row < scroll_y:
+                scroll_y = row
+            elif row >= scroll_y + max_y:
+                scroll_y = row - max_y + 1
+                
+            if col < scroll_x:
+                scroll_x = col
+            elif col >= scroll_x + max_x:
+                scroll_x = col - max_x + 1
+            
+            win.clear()
+            for i in range(max_y):
+                line_idx = scroll_y + i
+                if line_idx < len(lines):
+                    line_content = lines[line_idx]
+                    if scroll_x < len(line_content):
+                        visible_chunk = line_content[scroll_x:scroll_x + max_x]
+                        win.addstr(i, 0, visible_chunk)
+            
+            win.move(row - scroll_y, col - scroll_x)
+            win.refresh()
+            
+            ch = win.getch()
+            
+            if ch == 7:  # Ctrl+G to finish
+                return "\n".join(lines)
+            elif ch == 27:  # Esc to cancel
+                return None
+            elif ch == curses.KEY_UP:
+                if row > 0:
+                    row -= 1
+                    col = min(col, len(lines[row]))
+            elif ch == curses.KEY_DOWN:
+                if row < len(lines) - 1:
+                    row += 1
+                    col = min(col, len(lines[row]))
+            elif ch == curses.KEY_LEFT:
+                if col > 0:
+                    col -= 1
+                elif row > 0:
+                    row -= 1
+                    col = len(lines[row])
+            elif ch == curses.KEY_RIGHT:
+                if col < len(lines[row]):
+                    col += 1
+                elif row < len(lines) - 1:
+                    row += 1
+                    col = 0
+            elif ch in (curses.KEY_HOME, 1):  # KEY_HOME or Ctrl+A
+                col = 0
+            elif ch in (curses.KEY_END, 5):   # KEY_END or Ctrl+E
+                col = len(lines[row])
+            elif ch in (curses.KEY_ENTER, 10, 13):
+                current_line = lines[row]
+                lines[row] = current_line[:col]
+                lines.insert(row + 1, current_line[col:])
+                row += 1
+                col = 0
+            elif ch in (curses.KEY_BACKSPACE, 127, 8):
+                if col > 0:
+                    current_line = lines[row]
+                    lines[row] = current_line[:col - 1] + current_line[col:]
+                    col -= 1
+                elif row > 0:
+                    prev_line_len = len(lines[row - 1])
+                    lines[row - 1] += lines[row]
+                    lines.pop(row)
+                    row -= 1
+                    col = prev_line_len
+            elif ch in (curses.KEY_DC, 330, 4):  # KEY_DC or Ctrl+D
+                if col < len(lines[row]):
+                    current_line = lines[row]
+                    lines[row] = current_line[:col] + current_line[col + 1:]
+                elif row < len(lines) - 1:
+                    lines[row] += lines[row + 1]
+                    lines.pop(row + 1)
+            elif ch == 21:  # Ctrl+U
+                lines[row] = lines[row][col:]
+                col = 0
+            elif ch == 11:  # Ctrl+K
+                lines[row] = lines[row][:col]
+            elif ch == 9:  # Tab
+                lines[row] = lines[row][:col] + "  " + lines[row][col:]
+                col += 2
+            elif 32 <= ch <= 126 or (ch >= 160 and ch <= 0x10ffff):
+                char = chr(ch)
+                lines[row] = lines[row][:col] + char + lines[row][col:]
+                col += 1
+
     def edit_todo_form(self, todo: Todo):
         height, width = self.stdscr.getmaxyx()
         self.stdscr.clear()
@@ -140,63 +302,21 @@ class TodoUI:
         self.stdscr.addstr(8, 2, ">")
         
         self.stdscr.attron(curses.color_pair(1))
-        self.stdscr.addstr(height - 1, 0, " Edit header, then body. Ctrl+G to save, Esc to cancel ".ljust(width - 1))
+        self.stdscr.addstr(height - 1, 0, " Edit header & body. Arrows/Home/End navigate, Ctrl+G saves, Esc cancels ".ljust(width - 1))
         self.stdscr.attroff(curses.color_pair(1))
         
-        curses.curs_set(1)
-        curses.echo()
-        
-        self.stdscr.addstr(4, 4, todo.header[:width - 6])
-        self.stdscr.move(4, 4)
-        self.stdscr.refresh()
-        header = self.stdscr.getstr(4, 4, width - 6).decode('utf-8')
-        
-        if not header:
-            curses.noecho()
+        header = self.edit_single_line(self.stdscr, 4, 4, todo.header, width - 6)
+        if header is None or not header:
             curses.curs_set(0)
             return
         
         body_win = curses.newwin(height - 12, width - 6, 8, 4)
-        body_win.keypad(True)
+        body = self.edit_multiline(body_win, todo.body or "", height - 12, width - 6)
+        if body is None:
+            curses.curs_set(0)
+            return
         
-        body_lines = todo.body.split('\n') if todo.body else []
-        current_line = ""
-        
-        while True:
-            body_win.clear()
-            for i, line in enumerate(body_lines):
-                if i < height - 13:
-                    body_win.addstr(i, 0, line[:width - 7])
-            if len(body_lines) < height - 13:
-                body_win.addstr(len(body_lines), 0, current_line[:width - 7])
-            body_win.refresh()
-            
-            ch = body_win.getch()
-            
-            if ch == 7:  # Ctrl+G
-                if current_line:
-                    body_lines.append(current_line)
-                break
-            elif ch == 27:  # Esc
-                curses.noecho()
-                curses.curs_set(0)
-                return
-            elif ch in (curses.KEY_ENTER, 10, 13):
-                body_lines.append(current_line)
-                current_line = ""
-            elif ch in (curses.KEY_BACKSPACE, 127, 8):
-                if current_line:
-                    current_line = current_line[:-1]
-                elif body_lines:
-                    current_line = body_lines.pop()
-            elif 32 <= ch <= 126:
-                current_line += chr(ch)
-        
-        body = "\n".join(body_lines)
-        
-        curses.noecho()
         curses.curs_set(0)
-        
         self.manager.update_todo(todo, header, body)
 
     def add_todo_form(self):
@@ -213,62 +333,21 @@ class TodoUI:
         self.stdscr.addstr(8, 2, ">")
         
         self.stdscr.attron(curses.color_pair(1))
-        self.stdscr.addstr(height - 1, 0, " Enter header, then body. Ctrl+G to save, Esc to cancel ".ljust(width - 1))
+        self.stdscr.addstr(height - 1, 0, " Enter header & body. Arrows/Home/End navigate, Ctrl+G saves, Esc cancels ".ljust(width - 1))
         self.stdscr.attroff(curses.color_pair(1))
         
-        curses.curs_set(1)
-        curses.echo()
-        
-        self.stdscr.move(4, 4)
-        self.stdscr.refresh()
-        header = self.stdscr.getstr(4, 4, width - 6).decode('utf-8')
-        
-        if not header:
-            curses.noecho()
+        header = self.edit_single_line(self.stdscr, 4, 4, "", width - 6)
+        if header is None or not header:
             curses.curs_set(0)
             return
         
         body_win = curses.newwin(height - 12, width - 6, 8, 4)
-        body_win.keypad(True)
+        body = self.edit_multiline(body_win, "", height - 12, width - 6)
+        if body is None:
+            curses.curs_set(0)
+            return
         
-        body_lines = []
-        current_line = ""
-        
-        while True:
-            body_win.clear()
-            for i, line in enumerate(body_lines):
-                if i < height - 13:
-                    body_win.addstr(i, 0, line[:width - 7])
-            if len(body_lines) < height - 13:
-                body_win.addstr(len(body_lines), 0, current_line[:width - 7])
-            body_win.refresh()
-            
-            ch = body_win.getch()
-            
-            if ch == 7:  # Ctrl+G
-                if current_line:
-                    body_lines.append(current_line)
-                break
-            elif ch == 27:  # Esc
-                curses.noecho()
-                curses.curs_set(0)
-                return
-            elif ch in (curses.KEY_ENTER, 10, 13):
-                body_lines.append(current_line)
-                current_line = ""
-            elif ch in (curses.KEY_BACKSPACE, 127, 8):
-                if current_line:
-                    current_line = current_line[:-1]
-                elif body_lines:
-                    current_line = body_lines.pop()
-            elif 32 <= ch <= 126:
-                current_line += chr(ch)
-        
-        body = "\n".join(body_lines)
-        
-        curses.noecho()
         curses.curs_set(0)
-        
         self.manager.add_todo(header, body)
 
     def run(self):

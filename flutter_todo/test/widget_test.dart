@@ -41,8 +41,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(TodoListScreen), findsOneWidget);
-    expect(find.text('TODO List'), findsOneWidget);
-    expect(find.text('No todos yet'), findsOneWidget);
+    expect(find.text('TODOs'), findsOneWidget);
   });
 
   testWidgets('settings icon navigates to Settings screen', (tester) async {

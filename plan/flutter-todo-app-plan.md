@@ -210,17 +210,23 @@ Each phase has checkable action points. **Phases 2–7 are developed and fully v
 
 ### Phase 5 — Android Secure Settings & State Management
 
-- [ ] Implement `lib/services/settings_store.dart`:
-  - [ ] GitHub token in `flutter_secure_storage` (Android Keystore).
-  - [ ] Target repo in `shared_preferences`.
-  - [ ] Methods: `getToken()`, `saveToken()`, `getRepo()`, `saveRepo()`, `isConfigured()`, `clear()`.
-- [ ] Implement `lib/state/settings_model.dart` and `lib/state/todo_list_model.dart` with `ChangeNotifier`.
-- [ ] Build `lib/screens/settings_screen.dart`:
-  - [ ] Text fields for `owner/repo` and PAT.
-  - [ ] "Test Connection" button with real API ping and distinct error banners (invalid token vs repo not found).
-  - [ ] Save & Continue button.
-- [ ] Widget tests in `test/settings_screen_test.dart` with mock storage.
-- [ ] **Gate: Widget tests pass; route gating and token persistence verified.**
+- [x] Implement `lib/services/settings_store.dart`:
+  - [x] GitHub token in `flutter_secure_storage` (Android Keystore).
+  - [x] Target repo in `shared_preferences`.
+  - [x] Methods: `getToken()`, `saveToken()`, `getRepo()`, `saveRepo()`, `isConfigured()`, `clear()`.
+      ✅ Done: Secure and persistent settings storage.
+- [x] Implement `lib/state/settings_model.dart` and `lib/state/todo_list_model.dart` with `ChangeNotifier`.
+      ✅ Done: State management models handling loading, errors, testing connection, and repository coordination.
+- [x] Build `lib/screens/settings_screen.dart`:
+  - [x] Text fields for `owner/repo` and PAT (with visibility toggle and validation).
+  - [x] "Test Connection" button with real API ping and distinct error banners (invalid token vs repo not found).
+  - [x] Save & Continue button that initializes the repository and navigates to the list.
+      ✅ Done: Full Material 3 mobile Settings UI.
+- [x] Widget tests in `test/settings_screen_test.dart` with mock storage.
+      ✅ Done: Verified validation errors, test connection feedback, and saving settings.
+- [x] **Gate: Widget tests pass; route gating and token persistence verified.**
+      ✅ Done: 46 test assertions pass in sub-second test execution with 0 analyzer issues.
+
 
 ### Phase 6 — Android Todo List Screen (Material 3 Mobile)
 

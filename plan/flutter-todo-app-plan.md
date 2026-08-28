@@ -174,16 +174,21 @@ Each phase has checkable action points. **Phases 2–7 are developed and fully v
 
 ### Phase 3 — GitHub API Client (Pure Dart)
 
-- [ ] Implement `lib/services/github_api_client.dart`:
-  - [ ] Injectable `http.Client` for fast testing.
-  - [ ] Standard GitHub REST headers (Accept, X-GitHub-Api-Version, Bearer auth).
-  - [ ] `listIssues(repo, {state=all, perPage=100})` with pagination & PR filtering.
-  - [ ] `createIssue(repo, {title, body})`.
-  - [ ] `patchIssue(repo, number, payload)`.
-  - [ ] `testConnection(repo)`.
-- [ ] Implement error handling hierarchy (`GitHubApiException`, `AuthException`, `NotFoundException`, `RateLimitException`, `NetworkException`).
-- [ ] Unit tests in `test/github_api_client_test.dart` using `FakeClient`.
-- [ ] **Gate: `flutter test` passes with full coverage of API methods and error mappings.**
+- [x] Implement `lib/services/github_api_client.dart`:
+  - [x] Injectable `http.Client` for fast testing.
+  - [x] Standard GitHub REST headers (Accept, X-GitHub-Api-Version, Bearer auth).
+  - [x] `listIssues(repo, {state=all, perPage=100})` with automatic pagination & PR filtering.
+  - [x] `createIssue(repo, {title, body})`.
+  - [x] `patchIssue(repo, number, payload)`.
+  - [x] `testConnection(repo)`.
+      ✅ Done: REST client wrapping GitHub API operations.
+- [x] Implement error handling hierarchy (`GitHubApiException`, `GitHubAuthException`, `GitHubNotFoundException`, `GitHubRateLimitException` with reset timestamp, `GitHubValidationException`, `GitHubNetworkException`).
+      ✅ Done: Typed exception model for clean UI handling.
+- [x] Unit tests in `test/github_api_client_test.dart` using `FakeClient`.
+      ✅ Done: Comprehensive tests for headers, auth omission, pagination, CRUD calls, and all HTTP error codes (401, 403 rate limit vs forbidden, 404, 422, network exceptions).
+- [x] **Gate: `flutter test` passes with full coverage of API methods and error mappings.**
+      ✅ Done: All 36 test assertions passed in sub-second execution with zero analyzer issues.
+
 
 ### Phase 4 — Todo Repository Business Logic (Pure Dart)
 

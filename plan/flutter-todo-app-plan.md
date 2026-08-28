@@ -267,11 +267,17 @@ Each phase has checkable action points. **Phases 2–7 are developed and fully v
 
 ### Phase 8 — Polish, Android UX Hardening & Error Handling
 
-- [ ] Soft keyboard handling (`resizeToAvoidBottomInset: true`, focus management).
-- [ ] Offline / network failure handling with retry snackbars.
-- [ ] Rate limit warning banners.
-- [ ] Semantic labels and accessibility pass for Android TalkBack.
-- [ ] Code cleanliness pass (`flutter analyze` with zero warnings/errors).
+- [x] Soft keyboard handling (`resizeToAvoidBottomInset: true`, focus management, keyboard dismiss on drag, enter key focus advancement).
+      ✅ Done: Smooth IME soft keyboard interactions in forms.
+- [x] Offline / network failure handling with retry snackbars and banners.
+      ✅ Done: Clear error alerts and floating feedback across all network operations.
+- [x] Rate limit warning banners.
+      ✅ Done: Custom warning styling and timer icon when GitHub rate limit is hit.
+- [x] Semantic labels and accessibility pass for Android TalkBack.
+      ✅ Done: `Semantics` tags added for checkbox actions, reorder handles, buttons, and error live regions.
+- [x] Code cleanliness pass (`flutter analyze` with zero warnings/errors).
+      ✅ Done: 100% clean analyzer diagnostics, zero dead code or unused imports.
+
 
 ### Phase 9 — Android Build, Emulator Run & Acceptance
 

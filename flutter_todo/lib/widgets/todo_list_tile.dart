@@ -114,10 +114,13 @@ class TodoListTile extends StatelessWidget {
         color: isDone ? theme.colorScheme.surfaceContainerHighest.withAlpha(120) : null,
         child: ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-          leading: Checkbox(
-            value: isDone,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            onChanged: (_) => onToggle(),
+          leading: Semantics(
+            label: isDone ? 'Mark "${todo.header}" as active' : 'Mark "${todo.header}" as completed',
+            child: Checkbox(
+              value: isDone,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              onChanged: (_) => onToggle(),
+            ),
           ),
           title: Text(
             todo.header,
@@ -139,9 +142,12 @@ class TodoListTile extends StatelessWidget {
               : null,
           trailing: ReorderableDragStartListener(
             index: index,
-            child: const Padding(
-              padding: EdgeInsets.all(8),
-              child: Icon(Icons.drag_handle),
+            child: Semantics(
+              label: 'Reorder "${todo.header}"',
+              child: const Padding(
+                padding: EdgeInsets.all(8),
+                child: Icon(Icons.drag_handle),
+              ),
             ),
           ),
           onTap: onTap,

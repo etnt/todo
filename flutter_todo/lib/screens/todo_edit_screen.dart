@@ -22,6 +22,8 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _headerController;
   late final TextEditingController _bodyController;
+  late final FocusNode _headerFocusNode;
+  late final FocusNode _bodyFocusNode;
 
   bool _isSaving = false;
   String? _errorMessage;
@@ -33,12 +35,16 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
     super.initState();
     _headerController = TextEditingController(text: widget.todo?.header ?? '');
     _bodyController = TextEditingController(text: widget.todo?.body ?? '');
+    _headerFocusNode = FocusNode();
+    _bodyFocusNode = FocusNode();
   }
 
   @override
   void dispose() {
     _headerController.dispose();
     _bodyController.dispose();
+    _headerFocusNode.dispose();
+    _bodyFocusNode.dispose();
     super.dispose();
   }
 
@@ -84,6 +90,9 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Dismiss soft keyboard
+    FocusScope.of(context).unfocus();
+
     setState(() {
       _isSaving = true;
       _errorMessage = null;
@@ -98,7 +107,10 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
         await model.updateTodo(widget.todo!, header, body);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('TODO updated successfully!')),
+            const SnackBar(
+              content: Text('TODO updated successfully!'),
+              behavior: SnackBarBehavior.floating,
+            ),
           );
           Navigator.of(context).pop(true);
         }
@@ -106,7 +118,10 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
         await model.addTodo(header, body);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('TODO created successfully!')),
+            const SnackBar(
+              content: Text('TODO created successfully!'),
+              behavior: SnackBarBehavior.floating,
+            ),
           );
           Navigator.of(context).pop(true);
         }
@@ -121,6 +136,7 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
           SnackBar(
             content: Text('Failed to save TODO: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -139,6 +155,7 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
         }
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: true,
         appBar: AppBar(
           title: Text(_isEditing ? 'Edit TODO' : 'New TODO'),
           actions: [
@@ -158,6 +175,7 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
         body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             child: Form(
               key: _formKey,
               child: Column(
@@ -183,6 +201,7 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
                   // Title input
                   TextFormField(
                     controller: _headerController,
+                    focusNode: _headerFocusNode,
                     autofocus: !_isEditing,
                     decoration: const InputDecoration(
                       labelText: 'Title',
@@ -191,6 +210,9 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
                       prefixIcon: Icon(Icons.title),
                     ),
                     textInputAction: TextInputAction.next,
+                    onFieldSubmitted: (_) {
+                      FocusScope.of(context).requestFocus(_bodyFocusNode);
+                    },
                     validator: _validateHeader,
                   ),
                   const SizedBox(height: 16),
@@ -198,6 +220,7 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
                   // Description input
                   TextFormField(
                     controller: _bodyController,
+                    focusNode: _bodyFocusNode,
                     decoration: const InputDecoration(
                       labelText: 'Description (optional)',
                       hintText: 'Add details, notes, or bullet points...',

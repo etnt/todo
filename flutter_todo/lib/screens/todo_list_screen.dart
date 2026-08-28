@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_routes.dart';
+import '../models/todo.dart';
 import '../state/settings_model.dart';
 import '../state/todo_list_model.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/error_banner.dart';
 import '../widgets/todo_list_tile.dart';
+import 'todo_detail_screen.dart';
+import 'todo_edit_screen.dart';
 
 /// Main TODO list screen with tabs, pull-to-refresh, reordering, and swipe actions.
 class TodoListScreen extends StatefulWidget {
@@ -65,6 +68,22 @@ class _TodoListScreenState extends State<TodoListScreen> {
           icon: Icons.inbox_outlined,
         );
     }
+  }
+
+  void _openDetail(Todo todo) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TodoDetailScreen(todo: todo),
+      ),
+    );
+  }
+
+  void _openAdd() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const TodoEditScreen(),
+      ),
+    );
   }
 
   @override
@@ -168,9 +187,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                       index: index,
                       onToggle: () => todoList.toggleStatus(todo),
                       onDelete: () => todoList.deleteTodo(todo),
-                      onTap: () {
-                        // View / Edit detail navigation arrives in Phase 7
-                      },
+                      onTap: () => _openDetail(todo),
                     );
                   },
                 ),
@@ -179,9 +196,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Add TODO screen navigation arrives in Phase 7
-        },
+        onPressed: _openAdd,
         child: const Icon(Icons.add),
       ),
     );

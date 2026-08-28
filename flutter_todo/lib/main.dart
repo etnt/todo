@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'app_routes.dart';
 import 'repositories/todo_repository.dart';
 import 'screens/settings_screen.dart';
+import 'screens/todo_edit_screen.dart';
 import 'screens/todo_list_screen.dart';
 import 'services/github_api_client.dart';
 import 'services/settings_store.dart';
@@ -57,8 +58,8 @@ class TodoApp extends StatelessWidget {
       routes: {
         AppRoutes.settings: (_) => const SettingsScreen(),
         AppRoutes.list: (_) => const TodoListScreen(),
+        AppRoutes.edit: (_) => const TodoEditScreen(),
       },
     );
   }
 }
-

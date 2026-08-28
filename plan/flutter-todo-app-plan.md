@@ -249,16 +249,21 @@ Each phase has checkable action points. **Phases 2–7 are developed and fully v
 
 ### Phase 7 — Add/Edit & Detail Screens
 
-- [ ] Build `lib/screens/todo_edit_screen.dart`:
-  - [ ] Single-line Title `TextField` (required validation).
-  - [ ] Multi-line Description `TextField` (`maxLines: null`, soft keyboard aware).
-  - [ ] Mobile-friendly Save and Cancel actions.
-  - [ ] Loading state on save; error presentation preserving entered text if API fails.
-- [ ] Build `lib/screens/todo_detail_screen.dart`:
-  - [ ] Displays full title, body, status badge, created/closed timestamps.
-  - [ ] Action buttons for Edit, Toggle Status, and Delete.
-- [ ] Widget tests in `test/todo_edit_screen_test.dart` and `test/todo_detail_screen_test.dart`.
-- [ ] **Gate: Widget tests pass for all user flows.**
+- [x] Build `lib/screens/todo_edit_screen.dart`:
+  - [x] Single-line Title `TextField` (required validation).
+  - [x] Multi-line Description `TextField` (`maxLines: 8`, soft keyboard and IME aware).
+  - [x] Mobile-friendly Save and Discard actions with `PopScope` unsaved change prompts.
+  - [x] Loading state on save; error presentation preserving entered text if API fails.
+      ✅ Done: Add and Edit flows fully implemented.
+- [x] Build `lib/screens/todo_detail_screen.dart`:
+  - [x] Displays full title, body, status badge, created/closed timestamps, issue number, and priority.
+  - [x] Action buttons for Edit, Toggle Status, and Delete with confirmation.
+      ✅ Done: Full-featured detail view.
+- [x] Widget tests in `test/todo_edit_screen_test.dart` and `test/todo_detail_screen_test.dart`.
+      ✅ Done: Verified add mode validation, creation flow, edit mode updates, detail screen rendering, status toggling, and deletion dialog.
+- [x] **Gate: Widget tests pass for all user flows.**
+      ✅ Done: 56 test assertions pass in sub-second test execution with 0 analyzer issues.
+
 
 ### Phase 8 — Polish, Android UX Hardening & Error Handling
 

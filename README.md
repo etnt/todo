@@ -94,6 +94,31 @@ Behavior in GitHub-backed mode:
 - Priority and internal metadata are saved in a hidden metadata block in the issue body
 - Deleting a todo marks it as deleted and closes its issue
 
+## Flutter Android Mobile App
+
+The repository includes a companion Flutter Android mobile application located in `flutter_todo/`. It synchronizes seamlessly with the same GitHub Issues repository as the terminal UI.
+
+### Features
+- 📱 Material 3 mobile user interface
+- 🔄 Seamless 2-way interoperability with the Python terminal client
+- 🔒 Secure GitHub token storage in Android Keystore via EncryptedSharedPreferences
+- ⚡ Pull-to-refresh, swipe actions (toggle done / delete), and drag-to-reorder priority
+
+### Build & Run Android App
+```bash
+cd flutter_todo
+
+# Run tests
+flutter test
+
+# Build debug APK
+flutter build apk --debug
+
+# Run on connected Android device or emulator
+flutter run
+```
+
+
 ## Project Structure
 
 ```

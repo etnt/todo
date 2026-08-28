@@ -192,16 +192,20 @@ Each phase has checkable action points. **Phases 2–7 are developed and fully v
 
 ### Phase 4 — Todo Repository Business Logic (Pure Dart)
 
-- [ ] Implement `lib/repositories/todo_repository.dart`:
-  - [ ] `load()` — retrieves issues, decodes metadata, filters deleted, sorts by priority.
-  - [ ] `addTodo(header, body)` — calculates priority, creates issue on GitHub, returns `Todo`.
-  - [ ] `updateTodo(todo, header, body)` — updates title and body+meta via PATCH.
-  - [ ] `toggleStatus(todo)` — flips status (open ⇄ closed) on GitHub.
-  - [ ] `moveUp(todo)` / `moveDown(todo)` — swaps priority metadata of adjacent items via PATCH.
-  - [ ] `deleteTodo(todo)` — sets `deleted: true`, closes issue on GitHub, removes from local memory.
-  - [ ] Filter helpers: `getActiveTodos()`, `getDoneTodos()`, `getAllTodos()`.
-- [ ] Unit tests in `test/todo_repository_test.dart` with `FakeClient`.
-- [ ] **Gate: `flutter test` passes; full business logic verified in sub-second test runs.**
+- [x] Implement `lib/repositories/todo_repository.dart`:
+  - [x] `load()` — retrieves issues, decodes metadata, filters deleted, sorts by priority.
+  - [x] `addTodo(header, body)` — calculates next priority (max + 1), creates issue on GitHub, adopts returned attributes.
+  - [x] `updateTodo(todo, header, body)` — updates title and body+meta via PATCH.
+  - [x] `toggleStatus(todo)` — flips status (open ⇄ closed) on GitHub and updates local finishedDate.
+  - [x] `moveUp(todo)` / `moveDown(todo)` — swaps priority metadata of adjacent items via PATCH.
+  - [x] `deleteTodo(todo)` — sets `deleted: true`, closes issue on GitHub, removes from local memory.
+  - [x] Filter helpers: `getActiveTodos()`, `getDoneTodos()`, `getAllTodos()`.
+      ✅ Done: Complete business logic ported from Python `TodoManager`.
+- [x] Unit tests in `test/todo_repository_test.dart` with `FakeClient`.
+      ✅ Done: Verified issue loading, sorting, query filters, addition, editing, status toggling, moving up/down priority swaps, and deletion.
+- [x] **Gate: `flutter test` passes; full business logic verified in sub-second test runs.**
+      ✅ Done: 42 test assertions pass with zero analyzer issues.
+
 
 
 ### Phase 5 — Android Secure Settings & State Management

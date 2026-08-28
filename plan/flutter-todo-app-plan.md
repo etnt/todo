@@ -1,73 +1,84 @@
-# Plan: Flutter TODO App (GitHub Issues–backed)
+# Plan: Flutter Android TODO App (GitHub Issues–backed)
 
 ## 1. Goals
 
-Create a simple Flutter app that replaces the current Python curses-based TUI while
-keeping the same backend behavior:
+Create a **Flutter Android mobile app** (Material 3, Android 5.0+ / API 21+) that connects to GitHub Issues as its backend, maintaining strict bidirectional compatibility with the existing Python curses TUI:
 
-- Configure a GitHub token and target repository (`owner/repo`) from within the app.
-- Create a TODO by entering a **Title** and **Description**; it is stored as a GitHub
-  issue in the configured repository.
-- List existing TODOs (views: Active / Done / All).
-- Modify existing TODOs:
+- **Mobile-first settings**: Enter and securely store a GitHub Personal Access Token (stored in Android Keystore via EncryptedSharedPreferences) and repository (`owner/repo`).
+- **Create TODOs on mobile**: Clean touch-friendly form for **Title** and **Description**, saved as a new GitHub issue.
+- **List & manage TODOs**: Mobile views for Active / Done / All with pull-to-refresh (`RefreshIndicator`), swipe actions, and status checkboxes.
+- **Modify existing TODOs**:
   - Edit title and description.
-  - Toggle active ⇄ done (open ⇄ closed issue).
-  - Reorder by priority.
-  - Delete (close issue + mark as deleted in metadata).
+  - Toggle active ⇄ done (opens/closes GitHub issue).
+  - Reorder by priority (drag handle in list).
+  - Delete with confirmation dialog (closes issue + sets `deleted: true` metadata).
+- **Interoperability**: Strict compatibility with the Python TUI format (`<!-- todo-meta: {"priority":N,"deleted":bool} -->`), so both Android and terminal clients can share the same repo.
+- **Efficient Development Methodology**: Fast, pure Dart unit/widget testing for core business logic, API communication, and UI rendering (sub-second feedback via `flutter test` with `FakeClient`), avoiding heavy emulator/Gradle overhead until dedicated verification milestones.
 
-The app must remain **interoperable** with the existing Python TUI: both apps read and
-write the same GitHub issues, including the hidden metadata block, so either client can
-be used against the same repository.
+## 2. Android Mobile Specifics & Platform Architecture
 
-## 2. Current behavior to replicate (from the Python app)
-
-| Python (`todo_manager.py`) | Flutter equivalent |
+| Concern | Android Solution & Configuration |
 |---|---|
-| `TODO_GITHUB_REPO` + `GITHUB_TOKEN` env vars | In-app Settings screen persisted on device |
+| **Target Platform** | Android 5.0+ (API 21+) up to Android 14/15 (API 34/35) |
+| **Android SDK Configuration** | `compileSdk = 37`, `minSdk = 21`, `targetSdk = 34` in `android/app/build.gradle.kts` |
+| **Permissions** | `<uses-permission android:name="android.permission.INTERNET"/>` in `AndroidManifest.xml` |
+| **Secure Token Storage** | `flutter_secure_storage` backed by Android KeyStore + `EncryptedSharedPreferences` |
+| **Mobile UX Patterns** | Material 3 UI, `RefreshIndicator` (pull-to-refresh), `Dismissible` (swipe actions), `ReorderableListView`, snackbars for error/action feedback, floating action button (FAB) for new TODOs |
+| **Touch & Soft Keyboard** | Touch targets >= 48dp, multiline input scrolling with IME/keyboard awareness (`resizeToAvoidBottomInset: true`) |
+| **Network & Lifecycle** | Handling Android offline/airplane mode, token expiry, app pause/resume state |
+
+## 3. Current Behavior to Replicate (from Python `todo_manager.py`)
+
+| Python (`todo_manager.py`) | Flutter Android equivalent |
+|---|---|
+| `TODO_GITHUB_REPO` + `GITHUB_TOKEN` env vars | In-app Settings screen (persisted via `shared_preferences` + `flutter_secure_storage`) |
 | `Todo` model: id, header, body, created_date, finished_date, status, priority | Dart `Todo` class with `fromJson`/`toJson` |
-| List issues (`GET /repos/{repo}/issues?state=all`, paginated 100/page, PRs filtered out) | Same REST calls via `http` package |
+| List issues (`GET /repos/{repo}/issues?state=all`, paginated 100/page, PRs filtered out) | Same REST calls via `http` package with bearer auth |
 | Create issue (`POST /repos/{repo}/issues`) | Same |
 | Edit issue (`PATCH` title/body) | Same |
-| Toggle done (`PATCH` issue state open/closed) | Same |
-| Delete = close + `{"deleted": true}` metadata, then filtered from lists | Same |
-| Priority stored in hidden `<!-- todo-meta: {"priority":N,"deleted":bool} -->` comment in issue body | Same codec implemented in Dart |
+| Toggle done (`PATCH` issue state open/closed) | Same (swiping row or tapping status checkbox) |
+| Delete = close + `{"deleted": true}` metadata, then filtered from lists | Same (swiping row or delete button with confirm dialog) |
+| Priority in hidden comment: `<!-- todo-meta: {"priority":N,"deleted":bool} -->` | Identical Dart encoder/decoder |
 | Active = open issue, Done = closed issue | Same |
 
-## 3. Architecture
+## 4. Architecture
 
-Layered architecture, mirroring the separation in the Python app (`models.py` /
-`todo_manager.py` / `ui.py`):
+Layered architecture keeping Android UI decoupled from GitHub REST API and storage:
 
 ```
-┌─────────────────────────────────────────┐
-│  UI (Screens & Widgets)                 │  SettingsScreen, TodoListScreen,
-│                                         │  TodoEditScreen, TodoDetailScreen
-├─────────────────────────────────────────┤
-│  State management (Provider)            │  TodoListModel, SettingsModel
-├─────────────────────────────────────────┤
-│  TodoRepository                         │  Business logic: sorting, views,
-│                                         │  add/edit/toggle/reorder/delete
-├─────────────────────────────────────────┤
-│  GitHubApiClient                        │  REST calls, auth header, pagination
-├─────────────────────────────────────────┤
-│  Todo model + IssueMetaCodec            │  Mapping Todo ⇄ GitHub issue JSON,
-│                                         │  todo-meta comment encode/decode
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  Android Mobile UI (Material 3)                  │  SettingsScreen, TodoListScreen,
+│  - Tabs, Pull-to-refresh, Swipe actions, FAB     │  TodoEditScreen, TodoDetailScreen
+├──────────────────────────────────────────────────┤
+│  State Management (Provider / ChangeNotifier)    │  TodoListModel, SettingsModel
+├──────────────────────────────────────────────────┤
+│  TodoRepository                                  │  Business logic: sorting, views,
+│                                                  │  add/edit/toggle/reorder/delete
+├──────────────────────────────────────────────────┤
+│  GitHubApiClient                                 │  REST calls, auth header, pagination,
+│                                                  │  HTTP error mapping, rate limits
+├──────────────────────────────────────────────────┤
+│  Todo model + IssueMetaCodec                     │  Todo entity, JSON mapping,
+│                                                  │  todo-meta comment encode/decode
+├──────────────────────────────────────────────────┤
+│  Android Platform Storage                        │  flutter_secure_storage (KeyStore)
+│                                                  │  shared_preferences (repo config)
+└──────────────────────────────────────────────────┘
 ```
 
-## 4. Technology choices
+## 5. Technology Choices
 
 | Concern | Choice | Rationale |
 |---|---|---|
-| Framework | Flutter (stable, Dart) | Cross-platform, single codebase |
-| HTTP client | `http` package | Simple, official, sufficient for the REST calls used |
-| Token storage | `flutter_secure_storage` | Token must not be stored in plaintext |
-| Repo config | `shared_preferences` | `owner/repo` string is not a secret |
-| State management | `provider` | Simple, official, adequate for this app size |
-| Dates | Built-in `DateTime` + ISO-8601 strings | Matches Python's ISO format handling |
-| Tests | `flutter_test` + a fake `http.Client` | Unit-test codec and repository logic without network |
+| Framework | Flutter (Dart, Material 3) | Official Android support, declarative mobile UI |
+| HTTP client | `http` package | Lean, standard HTTP library, easily mockable with `http.BaseClient` |
+| Token storage | `flutter_secure_storage` | Android KeyStore + EncryptedSharedPreferences (never plaintext) |
+| Non-secret config | `shared_preferences` | Stores `owner/repo` string on Android |
+| State management | `provider` | Standard, minimal boilerplate, great testability |
+| Testing | `flutter_test` + `FakeClient` | Fast pure Dart tests (0 build time, no Gradle daemon needed) |
+| Android Platform | Android Gradle Plugin (Kotlin DSL) | Modern Android build tooling |
 
-## 5. Data model
+## 6. Data Model & Metadata Codec
 
 ```dart
 class Todo {
@@ -83,18 +94,13 @@ class Todo {
 
 ### Issue body metadata codec (must match Python exactly)
 
-- Encoding: `"{body}\n\n<!-- todo-meta: {json} -->"` (or just the comment when body is empty).
-- Decoding: find the **last** occurrence of `<!-- todo-meta:`, parse JSON up to `-->`;
-  on malformed JSON treat metadata as empty and keep the raw body.
-- Metadata JSON uses compact separators: `{"priority":N,"deleted":false}`.
+- **Encoding**: `"{body}\n\n<!-- todo-meta: {json} -->"` (or just the comment when body is empty).
+- **Decoding**: find the **last** occurrence of `<!-- todo-meta:`, parse JSON up to `-->`; on malformed JSON treat metadata as empty and keep the raw body.
+- **Metadata JSON format**: `{"priority":N,"deleted":false}` with compact separators.
 
-This is the most error-prone part — implement it as a standalone class and unit-test it
-against the same cases the Python `_parse_issue_body`/`_build_issue_body` handle.
+## 7. GitHub API Operations
 
-## 6. GitHub API operations
-
-Base URL: `https://api.github.com` — headers: `Authorization: Bearer <token>`,
-`Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`.
+Base URL: `https://api.github.com` — headers: `Authorization: Bearer <token>`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`.
 
 | Operation | Call |
 |---|---|
@@ -104,208 +110,159 @@ Base URL: `https://api.github.com` — headers: `Authorization: Bearer <token>`,
 | Toggle done | `PATCH .../issues/{number}` with `{"state": "closed"\|"open"}` |
 | Reorder | Swap `priority` of two adjacent todos via two `PATCH` body updates |
 | Delete | `PATCH .../issues/{number}` with `{"state": "closed"}` and body meta `{"deleted": true}` |
+| Test Connection | `GET /repos/{owner}/{repo}` (validates token & repo existence) |
 
-## 7. UI design
+## 8. Android Mobile UI Design
 
-1. **Settings screen** — inputs for `owner/repo` and GitHub token, Save button,
-   connection test (`GET` on the repo endpoint), validation errors shown inline.
-   Shown automatically on first launch if not configured.
-2. **Todo list screen** — the main screen:
-   - Tabs / segmented control: Active / Done / All.
-   - Each row: status icon (○/✓), title, creation date; done rows visually dimmed.
-   - Swipe actions or per-row menu: edit, toggle done, delete (with confirmation).
-   - Reorder: long-press drag handles.
-   - Pull-to-refresh; loading spinner; error banner with Retry; empty state ("No todos").
-   - FAB "+" to add a new todo.
-3. **Add / Edit screen** — Title (single-line `TextField`) and Description
-   (multi-line `TextField`), Save (Cancel button too). Save shows a progress indicator
-   while the API call runs; failures keep the form open with an error message.
-4. **Detail screen** — full title, description, dates, status; buttons to edit / toggle / delete.
+1. **Settings Screen**:
+   - Inputs for `owner/repo` (e.g. `etnt/mytodos`) and GitHub PAT (obscured text field).
+   - "Test connection" button calling GitHub API to verify repo access before saving.
+   - Saves token to Android KeyStore via `flutter_secure_storage` and repo string to `shared_preferences`.
+2. **Todo List Screen** (Main Screen):
+   - Top App Bar with repository name, sync status, and Settings action.
+   - Tabs / Segmented Buttons for **Active**, **Done**, and **All**.
+   - `RefreshIndicator` for Android pull-to-refresh.
+   - `ReorderableListView` allowing drag-and-drop priority sorting.
+   - List items showing title, creation date, status checkbox (tap to toggle active/done), and swipe-to-delete.
+   - Floating Action Button (`+`) to open the Add Todo screen.
+3. **Add / Edit Screen**:
+   - Single-line title input (`TextField` with autofocus and validation).
+   - Multi-line description input (`TextField` with `maxLines: null`, IME action awareness).
+   - Save button with loading indicator, gracefully handling network failures without data loss.
+4. **Detail Screen**:
+   - Full view of header, description, creation/completion timestamps, issue number, and direct buttons for Edit, Toggle Status, and Delete.
 
 
-## 8. Project structure
+## 9. Implementation Milestones
 
-```
-flutter_todo/
-├── pubspec.yaml
-├── lib/
-│   ├── main.dart
-│   ├── models/
-│   │   └── todo.dart               # Todo + TodoStatus
-│   ├── services/
-│   │   ├── github_api_client.dart  # raw REST calls, auth, pagination
-│   │   ├── issue_meta_codec.dart   # todo-meta comment encode/decode
-│   │   └── settings_store.dart     # secure token + repo persistence
-│   ├── repositories/
-│   │   └── todo_repository.dart    # port of TodoManager logic
-│   ├── state/
-│   │   ├── todo_list_model.dart    # ChangeNotifier: todos, views, loading, errors
-│   │   └── settings_model.dart
-│   ├── screens/
-│   │   ├── settings_screen.dart
-│   │   ├── todo_list_screen.dart
-│   │   ├── todo_edit_screen.dart
-│   │   └── todo_detail_screen.dart
-│   └── widgets/                    # todo_row, error_banner, etc.
-└── test/
-    ├── issue_meta_codec_test.dart
-    ├── todo_repository_test.dart   # with fake http.Client
-    └── todo_model_test.dart
-```
+Each phase has checkable action points. **Phases 2–7 are developed and fully verified with fast pure Dart unit/widget tests (`flutter test`) without needing slow Gradle builds or running emulators.**
 
-## 9. Implementation milestones
+### Phase 0 — Prerequisites & Baseline
 
-Each phase ends with a checkable "done" gate. Phases 2–4 are pure Dart logic and can be
-developed and verified with `flutter test` before any UI exists.
+- [x] Flutter SDK installed and verified with `flutter doctor` for Android.
+      ✅ Done: Flutter 3.44.0 stable, Android SDK 36/37, Pixel 6a API 34 emulator available.
+- [x] Scratch GitHub repo created.
+      ✅ Done: `etnt/todo-flutter-scratch` (private).
+- [x] Scratch repo verified to work with Python backend.
+      ✅ Done: 12/12 checks passed running `todo_manager.py` against scratch repo.
+- [ ] Fine-grained GitHub PAT configured on test device / emulator.
 
-### Phase 0 — Prerequisites
+### Phase 1 — Android Project Scaffold & Dependencies
 
-- [ ] Flutter SDK installed and `flutter doctor` passes for at least one target platform (iOS/Android/desktop).
-- [ ] A scratch GitHub repository created for testing (e.g. `owner/todo-scratch`).
-- [ ] A fine-grained GitHub personal access token created with *Issues: read & write* on the scratch repo only.
-- [ ] Scratch repo verified to work with the existing Python TUI (baseline interop check).
+- [x] Create Flutter project structure `flutter_todo/` without nested `.git`.
+- [x] Add dependencies to `pubspec.yaml`: `http`, `flutter_secure_storage`, `shared_preferences`, `provider`.
+- [x] Add Android internet permission in `android/app/src/main/AndroidManifest.xml`.
+- [x] Configure Android build settings (`compileSdk = 37`, Java 17) in `android/app/build.gradle.kts`.
+- [x] Set up hand-rolled `FakeClient` for fast HTTP unit tests without mockito.
+- [x] Add navigation skeleton & route gating (unconfigured → Settings, configured → List).
+- [x] Run `flutter test` (all unit/widget tests passing).
 
-### Phase 1 — Scaffold & dependencies
+### Phase 2 — Todo Model & Metadata Codec (Pure Dart)
 
-- [ ] Run `flutter create flutter_todo` and confirm the default app builds and runs (`flutter run`).
-- [ ] Add dependencies to `pubspec.yaml`: `http`, `flutter_secure_storage`, `shared_preferences`, `provider`.
-- [ ] Add dev/test setup: `flutter_test` (default) and a `mockito`-free fake `http.Client` helper (hand-rolled `FakeClient extends http.BaseClient`).
-- [ ] Create the folder skeleton under `lib/`: `models/`, `services/`, `repositories/`, `state/`, `screens/`, `widgets/`.
-- [ ] Set up navigation skeleton: placeholder `SettingsScreen` and `TodoListScreen` with routes (`/settings`, `/list`); app starts on Settings if unconfigured, List otherwise.
-- [ ] Run `flutter analyze` and `flutter test` — both clean.
-- [ ] **Gate: app runs on device/simulator showing a placeholder list screen; navigation to settings works.**
-
-### Phase 2 — Todo model & issue metadata codec (no UI)
-
-- [ ] Implement `lib/models/todo.dart`: `Todo` class with `id`, `header`, `body`, `createdDate`, `finishedDate`, `status` (`active`/`done`), `priority`.
-- [ ] Add `copyWith` and equality helpers to `Todo`.
+- [ ] Implement `lib/models/todo.dart` (`id`, `header`, `body`, `createdDate`, `finishedDate`, `status`, `priority`).
 - [ ] Implement `lib/services/issue_meta_codec.dart`:
-  - [ ] `encode(body, {priority, deleted})` → `"{body}\n\n<!-- todo-meta: {compact-json} -->"`; comment-only body when body is empty; no trailing whitespace mismatch vs. Python.
-  - [ ] `decode(rawBody)` → `(body, {priority, deleted})` using the **last** `<!-- todo-meta:` occurrence; malformed JSON → empty metadata, raw body preserved.
-- [ ] Implement issue JSON ⇄ `Todo` mapping: number→id, title→header, state→status, created_at/closed_at→ISO timestamps, PRs flagged.
-- [ ] Unit tests `test/issue_meta_codec_test.dart`:
-  - [ ] Encode/decode round-trip (body with and without text, empty body).
-  - [ ] Body containing a literal `<!--` elsewhere still parses (last-marker rule).
-  - [ ] Malformed metadata JSON tolerated; body returned intact.
-  - [ ] Priority default fallback when metadata missing.
-- [ ] Unit tests `test/todo_model_test.dart`: JSON mapping, status mapping, timestamp parsing incl. `Z` suffix.
-- [ ] **Gate: `flutter test` green for codec + model; codec output byte-compared against Python `_build_issue_body` for at least one fixture.**
+  - [ ] `encode(body, {priority, deleted})` matching Python formatting.
+  - [ ] `decode(rawBody)` extracting `priority` and `deleted` from the last `<!-- todo-meta: ... -->` block.
+- [ ] Implement issue JSON ⇄ `Todo` mapping helpers.
+- [ ] Add unit tests in `test/issue_meta_codec_test.dart` and `test/todo_model_test.dart`.
+- [ ] **Gate: `flutter test` passes 100%; metadata codec verified against Python output.**
 
-### Phase 3 — GitHub API client (no UI)
+### Phase 3 — GitHub API Client (Pure Dart)
 
 - [ ] Implement `lib/services/github_api_client.dart`:
-  - [ ] Constructor takes base URL (default `https://api.github.com`), token, and an injectable `http.Client`.
-  - [ ] Standard headers on every request: `Authorization: Bearer`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`, `Content-Type: application/json`.
-  - [ ] `listIssues(repo, {state=all, perPage=100})` with page loop until a short page; skip items containing `pull_request`.
-  - [ ] `createIssue(repo, {title, body})`, `patchIssue(repo, number, payload)`.
-- [ ] Define a `GitHubApiException` hierarchy: auth error (401/403), not found (404), validation (422), rate-limited (403 + `X-RateLimit-Remaining: 0`), network error.
-- [ ] Unit tests with fake client:
-  - [ ] Headers present and correct.
-  - [ ] Pagination: 2 pages (full + partial) aggregated; PR entries filtered out.
-  - [ ] Each HTTP error class mapped to the right exception type.
-  - [ ] Request bodies for create/patch are correct JSON.
-- [ ] **Gate: `flutter test` green; client contains no UI or storage code.**
+  - [ ] Injectable `http.Client` for fast testing.
+  - [ ] Standard GitHub REST headers (Accept, X-GitHub-Api-Version, Bearer auth).
+  - [ ] `listIssues(repo, {state=all, perPage=100})` with pagination & PR filtering.
+  - [ ] `createIssue(repo, {title, body})`.
+  - [ ] `patchIssue(repo, number, payload)`.
+  - [ ] `testConnection(repo)`.
+- [ ] Implement error handling hierarchy (`GitHubApiException`, `AuthException`, `NotFoundException`, `RateLimitException`, `NetworkException`).
+- [ ] Unit tests in `test/github_api_client_test.dart` using `FakeClient`.
+- [ ] **Gate: `flutter test` passes with full coverage of API methods and error mappings.**
 
-### Phase 4 — Todo repository (business logic, no UI)
+### Phase 4 — Todo Repository Business Logic (Pure Dart)
 
-- [ ] Implement `lib/repositories/todo_repository.dart` as a port of `TodoManager`:
-  - [ ] `load()` — list issues, decode metadata, skip `deleted:true`, sort by priority (fallback: creation index).
-  - [ ] `addTodo(header, body)` — next priority = max+1, create issue, adopt returned number/timestamps/state.
-  - [ ] `updateTodo(todo, header, body)` — PATCH title + body-with-meta.
-  - [ ] `toggleStatus(todo)` — PATCH state open/closed; update finishedDate locally.
-  - [ ] `moveUp/moveDown(todo)` — swap priorities and PATCH both issues' bodies.
-  - [ ] `deleteTodo(todo)` — PATCH close + `deleted:true` metadata; remove from local list.
-  - [ ] View helpers: `getActive()`, `getDone()`, `getAll()` sorted by priority.
-- [ ] Define repository-level exceptions reusing the client's exception types.
-- [ ] Unit tests with fake client:
-  - [ ] Load: open→active, closed→done, deleted filtered, priority ordering.
-  - [ ] Add: correct POST body; returned number becomes id.
-  - [ ] Update/toggle/delete: correct PATCH payloads (verify with captured requests).
-  - [ ] Reorder: both issues patched with swapped priorities.
-  - [ ] Client errors surface as repository exceptions.
-- [ ] **Gate: `flutter test` green — full backend behavior is verified without network or UI.**
+- [ ] Implement `lib/repositories/todo_repository.dart`:
+  - [ ] `load()` — retrieves issues, decodes metadata, filters deleted, sorts by priority.
+  - [ ] `addTodo(header, body)` — calculates priority, creates issue on GitHub, returns `Todo`.
+  - [ ] `updateTodo(todo, header, body)` — updates title and body+meta via PATCH.
+  - [ ] `toggleStatus(todo)` — flips status (open ⇄ closed) on GitHub.
+  - [ ] `moveUp(todo)` / `moveDown(todo)` — swaps priority metadata of adjacent items via PATCH.
+  - [ ] `deleteTodo(todo)` — sets `deleted: true`, closes issue on GitHub, removes from local memory.
+  - [ ] Filter helpers: `getActiveTodos()`, `getDoneTodos()`, `getAllTodos()`.
+- [ ] Unit tests in `test/todo_repository_test.dart` with `FakeClient`.
+- [ ] **Gate: `flutter test` passes; full business logic verified in sub-second test runs.**
 
-### Phase 5 — Settings screen & persistence
+
+### Phase 5 — Android Secure Settings & State Management
 
 - [ ] Implement `lib/services/settings_store.dart`:
-  - [ ] `shared_preferences` for `owner/repo`; `flutter_secure_storage` for the token.
-  - [ ] Load/save/clear methods; no token ever written to `shared_preferences` or logs.
-- [ ] Implement `lib/state/settings_model.dart` (ChangeNotifier): repo, hasToken, configured flag.
-- [ ] Build `SettingsScreen`:
-  - [ ] Text fields for `owner/repo` (format validation `owner/repo`) and token (obscured).
-  - [ ] "Test connection" button → `GET /repos/{owner}/{repo}`; success/failure message (maps 401 vs 404 distinctly).
-  - [ ] Save button persists config and navigates to the list screen.
-- [ ] First-launch gating: app opens Settings when unconfigured; list screen unreachable until configured.
-- [ ] Widget tests: validation errors shown; config round-trips through the store (fake secure storage).
-- [ ] **Gate: on a clean install the app demands configuration; with valid token+repo it proceeds to the (still placeholder) list screen.**
+  - [ ] GitHub token in `flutter_secure_storage` (Android Keystore).
+  - [ ] Target repo in `shared_preferences`.
+  - [ ] Methods: `getToken()`, `saveToken()`, `getRepo()`, `saveRepo()`, `isConfigured()`, `clear()`.
+- [ ] Implement `lib/state/settings_model.dart` and `lib/state/todo_list_model.dart` with `ChangeNotifier`.
+- [ ] Build `lib/screens/settings_screen.dart`:
+  - [ ] Text fields for `owner/repo` and PAT.
+  - [ ] "Test Connection" button with real API ping and distinct error banners (invalid token vs repo not found).
+  - [ ] Save & Continue button.
+- [ ] Widget tests in `test/settings_screen_test.dart` with mock storage.
+- [ ] **Gate: Widget tests pass; route gating and token persistence verified.**
 
-### Phase 6 — Todo list screen
+### Phase 6 — Android Todo List Screen (Material 3 Mobile)
 
-- [ ] Implement `lib/state/todo_list_model.dart` (ChangeNotifier): todos, current view, loading/error flags; wraps `TodoRepository`.
-- [ ] Build `TodoListScreen`:
-  - [ ] Segmented control / tabs: Active / Done / All (default Active).
-  - [ ] Rows: status icon (○/✓), header, created date; done rows dimmed/strikethrough.
-  - [ ] Pull-to-refresh triggers `load()`.
-  - [ ] Toggle done via swipe action or row menu, with optimistic update + error rollback.
-  - [ ] Edit entry point per row; delete with confirmation dialog.
-  - [ ] Reorder via long-press drag (`ReorderableListView`); on drop, swap priorities through the repository.
-  - [ ] States: loading spinner, error banner with Retry, empty state per tab ("No todos").
-  - [ ] FAB "+" navigates to Add screen; tapping a row navigates to Detail.
-- [ ] Settings entry point in the app bar (allows changing repo/token later).
-- [ ] Widget tests: tab filtering renders correct subset; toggle calls repository; delete asks for confirmation.
-- [ ] **Gate: real end-to-end run against the scratch repo — todos added via GitHub UI/Python TUI appear after pull-to-refresh.**
+- [ ] Build `lib/screens/todo_list_screen.dart`:
+  - [ ] Tabs / Segmented buttons: Active, Done, All.
+  - [ ] `RefreshIndicator` for Android pull-to-refresh.
+  - [ ] `ReorderableListView` with drag handles for priority reordering.
+  - [ ] `Dismissible` swipe actions on list rows (swipe right to toggle, swipe left to delete with confirm).
+  - [ ] Empty state, loading spinner, and error banner with retry button.
+  - [ ] Mobile FloatingActionButton (`+`) to navigate to Add Todo.
+  - [ ] AppBar settings action to edit config.
+- [ ] Build reusable widgets in `lib/widgets/`: `todo_list_tile.dart`, `error_banner.dart`, `empty_state.dart`.
+- [ ] Widget tests in `test/todo_list_screen_test.dart`.
+- [ ] **Gate: Widget tests pass for list rendering, tab switching, and pull-to-refresh.**
 
-### Phase 7 — Add/Edit + Detail screens
+### Phase 7 — Add/Edit & Detail Screens
 
-- [ ] Build `TodoEditScreen` (used for both add and edit):
-  - [ ] Single-line Title field (required, non-empty validation) and multi-line Description field.
-  - [ ] Save: shows progress; calls `addTodo` or `updateTodo`; on failure keeps the form and shows the error; on success pops back to list.
-  - [ ] Cancel button and back navigation (with discard-changes confirmation when fields are dirty).
-- [ ] Build `TodoDetailScreen`: full title, description, created/finished dates, status; buttons for edit, toggle done, delete.
-- [ ] Wire navigation: list → detail → edit; list → add.
-- [ ] Widget tests: empty title blocks save; save success pops navigation; API failure shows inline error and keeps data.
-- [ ] **Gate: full create-edit-toggle-delete cycle performed from the UI against the scratch repo.**
+- [ ] Build `lib/screens/todo_edit_screen.dart`:
+  - [ ] Single-line Title `TextField` (required validation).
+  - [ ] Multi-line Description `TextField` (`maxLines: null`, soft keyboard aware).
+  - [ ] Mobile-friendly Save and Cancel actions.
+  - [ ] Loading state on save; error presentation preserving entered text if API fails.
+- [ ] Build `lib/screens/todo_detail_screen.dart`:
+  - [ ] Displays full title, body, status badge, created/closed timestamps.
+  - [ ] Action buttons for Edit, Toggle Status, and Delete.
+- [ ] Widget tests in `test/todo_edit_screen_test.dart` and `test/todo_detail_screen_test.dart`.
+- [ ] **Gate: Widget tests pass for all user flows.**
 
-### Phase 8 — Polish & UX hardening
+### Phase 8 — Polish, Android UX Hardening & Error Handling
 
-- [ ] Friendly error messages for all `GitHubApiException` types (bad token, repo not found, rate limited, offline).
-- [ ] Global "unconfigured/invalid token" handling: any 401/404 during use offers to open Settings.
-- [ ] Confirm-token-mismatch check: warning if the configured repo contains non-todo issues (they will be shown) — document the limitation.
-- [ ] Theming: dark/light support; consistent status colors (green=done, default=active).
-- [ ] Accessibility pass: semantics labels on icons/buttons, sufficient contrast, dynamic text scaling.
-- [ ] Performance: only one full list load per refresh; no per-frame API calls; images/fonts checked.
-- [ ] `flutter analyze` clean; remove debug prints; verify no token appears in logs or error text.
-- [ ] **Gate: error paths demoed by revoking the token / renaming the repo / going offline — each shows a clear message, no crash.**
+- [ ] Soft keyboard handling (`resizeToAvoidBottomInset: true`, focus management).
+- [ ] Offline / network failure handling with retry snackbars.
+- [ ] Rate limit warning banners.
+- [ ] Semantic labels and accessibility pass for Android TalkBack.
+- [ ] Code cleanliness pass (`flutter analyze` with zero warnings/errors).
 
-### Phase 9 — Integration & acceptance testing
+### Phase 9 — Android Build, Emulator Run & Acceptance
 
-- [ ] Run full `flutter test` + `flutter analyze` suites; all green.
-- [ ] Manual interop checklist against the scratch repo shared with the Python TUI:
-  - [ ] Add in Flutter → visible in Python TUI after restart, and vice versa.
-  - [ ] Edit title/description in one app → change visible in the other.
-  - [ ] Toggle done in one app → open/closed state correct in the other.
-  - [ ] Reorder in Flutter → priority order respected by the Python TUI.
-  - [ ] Delete in Flutter → issue closed, hidden from both apps; also delete via Python → hidden in Flutter.
-  - [ ] Non-todo issue and an open PR in the repo → both ignored by the list.
-- [ ] Manual UI pass on the primary target platform (and a second platform if claimed): all screens, states, and flows.
-- [ ] Token security review: confirm token only in secure storage; grep code/logs for accidental exposure.
-- [ ] Update the root `README.md` with a Flutter app section (build/run instructions, token scope guidance).
-- [ ] **Gate: acceptance checklist signed off; app usable as the daily TODO client.**
+- [ ] Build Android debug APK (`flutter build apk --debug`).
+- [ ] Install and run on Android emulator or physical device.
+- [ ] Complete full bidirectional interop verification with Python TUI:
+  - [ ] Create TODO on Android → verify in Python TUI.
+  - [ ] Modify TODO in Python TUI → pull-to-refresh on Android and verify.
+  - [ ] Toggle done / reorder on Android → verify issue state & priority in Python TUI.
+  - [ ] Delete on Android → verify closed + marked deleted in Python TUI.
+- [ ] **Gate: Android app runs smoothly on device/emulator and passes 100% of interop checks.**
 
-## 10. Testing & security notes
+## 10. Security & Permissions
 
-- Unit-test the metadata codec and repository logic with a fake `http.Client` — no real
-  network in tests.
-- The token is stored only via `flutter_secure_storage` (Keychain/Keystore); never logged,
-  never in `shared_preferences`, never committed.
-- Request the minimum scope: a fine-grained token limited to the single repository with
-  *Issues: read & write* (or `public_repo` on a classic token for public repos).
-- Handle rate limiting gracefully (HTTP 403 + `X-RateLimit-Remaining: 0` → friendly message).
-- All destructive actions (delete) require confirmation.
+- Token is saved in Android Keystore via `flutter_secure_storage` using `EncryptedSharedPreferences`.
+- Token is never written to logcat, SharedPreferences, or error dialogs.
+- Android permission `android.permission.INTERNET` is the only permission requested.
 
-## 11. Out of scope (for the first version)
+## 11. Out of Scope (Version 1)
 
-- Local/offline mode (`todos.json` equivalent) — GitHub-only, matching the configured repo.
-- Assignees, labels, milestones, comments on issues.
-- Multiple repository profiles.
+- Offline-only / local `todos.json` mode (app connects to GitHub repository).
+- Multi-repository switching / profiles.
+- Issue labels, milestones, assignees, or comments.
 

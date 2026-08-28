@@ -159,13 +159,18 @@ Each phase has checkable action points. **Phases 2–7 are developed and fully v
 
 ### Phase 2 — Todo Model & Metadata Codec (Pure Dart)
 
-- [ ] Implement `lib/models/todo.dart` (`id`, `header`, `body`, `createdDate`, `finishedDate`, `status`, `priority`).
-- [ ] Implement `lib/services/issue_meta_codec.dart`:
-  - [ ] `encode(body, {priority, deleted})` matching Python formatting.
-  - [ ] `decode(rawBody)` extracting `priority` and `deleted` from the last `<!-- todo-meta: ... -->` block.
-- [ ] Implement issue JSON ⇄ `Todo` mapping helpers.
-- [ ] Add unit tests in `test/issue_meta_codec_test.dart` and `test/todo_model_test.dart`.
-- [ ] **Gate: `flutter test` passes 100%; metadata codec verified against Python output.**
+- [x] Implement `lib/models/todo.dart` (`id`, `header`, `body`, `createdDate`, `finishedDate`, `status`, `priority`, `markDone`, `markActive`, `copyWith`, `toJson`, `fromJson`, equality).
+      ✅ Done: Full Todo entity model matching Python schema.
+- [x] Implement `lib/services/issue_meta_codec.dart`:
+  - [x] `encode(body, {priority, deleted})` matching Python formatting.
+  - [x] `decode(rawBody)` extracting `priority` and `deleted` from the last `<!-- todo-meta: ... -->` block.
+  - [x] `fromGitHubIssue(issueJson)` mapping GitHub API JSON into `Todo`, filtering pull requests and soft-deleted items.
+      ✅ Done: 100% interoperable codec.
+- [x] Add unit tests in `test/issue_meta_codec_test.dart` and `test/todo_model_test.dart`.
+      ✅ Done: Comprehensive test suites covering encoding, decoding, corrupted comments, multiple comments, PR filtering, deleted filtering, and model serialization.
+- [x] **Gate: `flutter test` passes 100%; metadata codec verified against Python output.**
+      ✅ Done: All 24 test assertions passed with zero analyzer issues.
+
 
 ### Phase 3 — GitHub API Client (Pure Dart)
 

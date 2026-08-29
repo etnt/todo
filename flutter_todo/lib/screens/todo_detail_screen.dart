@@ -7,10 +7,7 @@ import 'todo_edit_screen.dart';
 
 /// Screen displaying the full details of a TODO item with actions to edit, toggle, or delete.
 class TodoDetailScreen extends StatefulWidget {
-  const TodoDetailScreen({
-    super.key,
-    required this.todo,
-  });
+  const TodoDetailScreen({super.key, required this.todo});
 
   final Todo todo;
 
@@ -52,7 +49,9 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete TODO?'),
-        content: Text('Are you sure you want to delete "${_todo.header}"? This will close the GitHub issue and mark it as deleted.'),
+        content: Text(
+          'Are you sure you want to delete "${_todo.header}"? This will close the GitHub issue and mark it as deleted.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -81,9 +80,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
 
   Future<void> _edit() async {
     final updated = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => TodoEditScreen(todo: _todo),
-      ),
+      MaterialPageRoute(builder: (_) => TodoEditScreen(todo: _todo)),
     );
 
     if (updated == true && mounted) {
@@ -130,7 +127,9 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         decoration: isDone ? TextDecoration.lineThrough : null,
-                        color: isDone ? theme.colorScheme.outline : theme.colorScheme.onSurface,
+                        color: isDone
+                            ? theme.colorScheme.outline
+                            : theme.colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -139,16 +138,22 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                     avatar: Icon(
                       isDone ? Icons.check_circle : Icons.pending_outlined,
                       size: 18,
-                      color: isDone ? Colors.green.shade800 : Colors.orange.shade800,
+                      color: isDone
+                          ? Colors.green.shade800
+                          : Colors.orange.shade800,
                     ),
                     label: Text(
                       isDone ? 'Done' : 'Active',
                       style: TextStyle(
-                        color: isDone ? Colors.green.shade900 : Colors.orange.shade900,
+                        color: isDone
+                            ? Colors.green.shade900
+                            : Colors.orange.shade900,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    backgroundColor: isDone ? Colors.green.shade50 : Colors.orange.shade50,
+                    backgroundColor: isDone
+                        ? Colors.green.shade50
+                        : Colors.orange.shade50,
                   ),
                 ],
               ),
@@ -172,10 +177,16 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _todo.body.isNotEmpty ? _todo.body : '(No description provided)',
+                        _todo.body.isNotEmpty
+                            ? _todo.body
+                            : '(No description provided)',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          fontStyle: _todo.body.isEmpty ? FontStyle.italic : FontStyle.normal,
-                          color: _todo.body.isEmpty ? theme.colorScheme.outline : theme.colorScheme.onSurface,
+                          fontStyle: _todo.body.isEmpty
+                              ? FontStyle.italic
+                              : FontStyle.normal,
+                          color: _todo.body.isEmpty
+                              ? theme.colorScheme.outline
+                              : theme.colorScheme.onSurface,
                         ),
                       ),
                     ],
@@ -207,10 +218,16 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                       ],
                       _buildMetaRow('Priority Index', '${_todo.priority}'),
                       const SizedBox(height: 8),
-                      _buildMetaRow('Created At', _formatDate(_todo.createdDate)),
+                      _buildMetaRow(
+                        'Created At',
+                        _formatDate(_todo.createdDate),
+                      ),
                       if (isDone && _todo.finishedDate != null) ...[
                         const SizedBox(height: 8),
-                        _buildMetaRow('Completed At', _formatDate(_todo.finishedDate)),
+                        _buildMetaRow(
+                          'Completed At',
+                          _formatDate(_todo.finishedDate),
+                        ),
                       ],
                     ],
                   ),
@@ -222,7 +239,9 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
               FilledButton.tonalIcon(
                 onPressed: _toggleStatus,
                 icon: Icon(isDone ? Icons.undo : Icons.check_circle_outline),
-                label: Text(isDone ? 'Reopen (Mark Active)' : 'Mark as Completed'),
+                label: Text(
+                  isDone ? 'Reopen (Mark Active)' : 'Mark as Completed',
+                ),
               ),
             ],
           ),
@@ -237,7 +256,10 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       children: [
         Text(
           label,
-          style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 13),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.outline,
+            fontSize: 13,
+          ),
         ),
         Text(
           value,

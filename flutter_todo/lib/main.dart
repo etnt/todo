@@ -30,7 +30,8 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => SettingsModel(settingsStore: settingsStore)..loadSettings(),
+          create: (_) =>
+              SettingsModel(settingsStore: settingsStore)..loadSettings(),
         ),
         ChangeNotifierProvider(
           create: (_) => TodoListModel(repository: todoRepository),
@@ -50,10 +51,7 @@ class TodoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'TODO',
-      theme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
       initialRoute: configured ? AppRoutes.list : AppRoutes.settings,
       routes: {
         AppRoutes.settings: (_) => const SettingsScreen(),

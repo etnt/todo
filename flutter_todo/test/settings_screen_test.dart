@@ -71,7 +71,10 @@ class FakeSettingsStore implements SettingsStore {
 
   @override
   Future<bool> isConfigured() async {
-    return _activeRepo != null && _activeRepo!.isNotEmpty && _token != null && _token!.isNotEmpty;
+    return _activeRepo != null &&
+        _activeRepo!.isNotEmpty &&
+        _token != null &&
+        _token!.isNotEmpty;
   }
 
   @override
@@ -111,39 +114,42 @@ void main() {
   });
 
   group('SettingsStore multi-repo logic', () {
-    test('isConfigured is false initially and true when repo and token are saved', () async {
-      expect(await settingsStore.isConfigured(), isFalse);
+    test(
+      'isConfigured is false initially and true when repo and token are saved',
+      () async {
+        expect(await settingsStore.isConfigured(), isFalse);
 
-      await settingsStore.addRepo('owner/repo1');
-      expect(await settingsStore.isConfigured(), isFalse);
+        await settingsStore.addRepo('owner/repo1');
+        expect(await settingsStore.isConfigured(), isFalse);
 
-      await settingsStore.saveToken('ghp_token123');
-      expect(await settingsStore.isConfigured(), isTrue);
+        await settingsStore.saveToken('ghp_token123');
+        expect(await settingsStore.isConfigured(), isTrue);
 
-      expect(await settingsStore.getRepo(), 'owner/repo1');
-      expect(await settingsStore.getRepos(), ['owner/repo1']);
-      expect(await settingsStore.getToken(), 'ghp_token123');
+        expect(await settingsStore.getRepo(), 'owner/repo1');
+        expect(await settingsStore.getRepos(), ['owner/repo1']);
+        expect(await settingsStore.getToken(), 'ghp_token123');
 
-      // Add second repo
-      await settingsStore.addRepo('owner/repo2', makeActive: false);
-      expect(await settingsStore.getRepos(), ['owner/repo1', 'owner/repo2']);
-      expect(await settingsStore.getActiveRepo(), 'owner/repo1');
+        // Add second repo
+        await settingsStore.addRepo('owner/repo2', makeActive: false);
+        expect(await settingsStore.getRepos(), ['owner/repo1', 'owner/repo2']);
+        expect(await settingsStore.getActiveRepo(), 'owner/repo1');
 
-      // Switch active repo
-      await settingsStore.setActiveRepo('owner/repo2');
-      expect(await settingsStore.getActiveRepo(), 'owner/repo2');
+        // Switch active repo
+        await settingsStore.setActiveRepo('owner/repo2');
+        expect(await settingsStore.getActiveRepo(), 'owner/repo2');
 
-      // Remove repo
-      await settingsStore.removeRepo('owner/repo2');
-      expect(await settingsStore.getRepos(), ['owner/repo1']);
-      expect(await settingsStore.getActiveRepo(), 'owner/repo1');
+        // Remove repo
+        await settingsStore.removeRepo('owner/repo2');
+        expect(await settingsStore.getRepos(), ['owner/repo1']);
+        expect(await settingsStore.getActiveRepo(), 'owner/repo1');
 
-      await settingsStore.clear();
-      expect(await settingsStore.isConfigured(), isFalse);
-      expect(await settingsStore.getRepo(), isNull);
-      expect(await settingsStore.getRepos(), isEmpty);
-      expect(await settingsStore.getToken(), isNull);
-    });
+        await settingsStore.clear();
+        expect(await settingsStore.isConfigured(), isFalse);
+        expect(await settingsStore.getRepo(), isNull);
+        expect(await settingsStore.getRepos(), isEmpty);
+        expect(await settingsStore.getToken(), isNull);
+      },
+    );
   });
 
   group('SettingsScreen Widget Tests', () {
@@ -151,20 +157,30 @@ void main() {
       final settingsModel = SettingsModel(settingsStore: settingsStore);
       final todoListModel = TodoListModel();
 
-      await tester.pumpWidget(createSettingsTestApp(
-        settingsModel: settingsModel,
-        todoListModel: todoListModel,
-      ));
+      await tester.pumpWidget(
+        createSettingsTestApp(
+          settingsModel: settingsModel,
+          todoListModel: todoListModel,
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Save & Open TODOs'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Please enter repository (e.g. owner/repo)'), findsOneWidget);
-      expect(find.text('Please enter your GitHub Personal Access Token'), findsOneWidget);
+      expect(
+        find.text('Please enter repository (e.g. owner/repo)'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Please enter your GitHub Personal Access Token'),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('test connection button displays success feedback', (tester) async {
+    testWidgets('test connection button displays success feedback', (
+      tester,
+    ) async {
       final fakeClient = FakeClient((request) {
         if (request.url.path == '/repos/owner/repo') {
           return http.Response(jsonEncode({'full_name': 'owner/repo'}), 200);
@@ -174,18 +190,24 @@ void main() {
 
       final settingsModel = SettingsModel(
         settingsStore: settingsStore,
-        clientFactory: (token) => GitHubApiClient(token: token, httpClient: fakeClient),
+        clientFactory: (token) =>
+            GitHubApiClient(token: token, httpClient: fakeClient),
       );
       final todoListModel = TodoListModel();
 
-      await tester.pumpWidget(createSettingsTestApp(
-        settingsModel: settingsModel,
-        todoListModel: todoListModel,
-      ));
+      await tester.pumpWidget(
+        createSettingsTestApp(
+          settingsModel: settingsModel,
+          todoListModel: todoListModel,
+        ),
+      );
       await tester.pumpAndSettle();
 
       // Enter token first (at index 0)
-      await tester.enterText(find.byType(TextFormField).at(0), 'ghp_test_token');
+      await tester.enterText(
+        find.byType(TextFormField).at(0),
+        'ghp_test_token',
+      );
       // Enter repository (at index 1)
       await tester.enterText(find.byType(TextFormField).at(1), 'owner/repo');
 
@@ -195,17 +217,24 @@ void main() {
       expect(find.text('Successfully connected to owner/repo'), findsOneWidget);
     });
 
-    testWidgets('save settings persists credentials and navigates to list', (tester) async {
+    testWidgets('save settings persists credentials and navigates to list', (
+      tester,
+    ) async {
       final settingsModel = SettingsModel(settingsStore: settingsStore);
       final todoListModel = TodoListModel();
 
-      await tester.pumpWidget(createSettingsTestApp(
-        settingsModel: settingsModel,
-        todoListModel: todoListModel,
-      ));
+      await tester.pumpWidget(
+        createSettingsTestApp(
+          settingsModel: settingsModel,
+          todoListModel: todoListModel,
+        ),
+      );
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextFormField).at(0), 'ghp_test_token');
+      await tester.enterText(
+        find.byType(TextFormField).at(0),
+        'ghp_test_token',
+      );
       await tester.enterText(find.byType(TextFormField).at(1), 'owner/repo');
 
       await tester.tap(find.text('Save & Open TODOs'));
@@ -216,35 +245,44 @@ void main() {
       expect(find.byType(TodoListScreen), findsOneWidget);
     });
 
-    testWidgets('allows adding multiple repositories and switching active selection', (tester) async {
-      await settingsStore.addRepo('owner/repo-one');
-      await settingsStore.saveToken('ghp_test_token');
+    testWidgets(
+      'allows adding multiple repositories and switching active selection',
+      (tester) async {
+        await settingsStore.addRepo('owner/repo-one');
+        await settingsStore.saveToken('ghp_test_token');
 
-      final settingsModel = SettingsModel(settingsStore: settingsStore)..loadSettings();
-      final todoListModel = TodoListModel();
+        final settingsModel = SettingsModel(settingsStore: settingsStore)
+          ..loadSettings();
+        final todoListModel = TodoListModel();
 
-      await tester.pumpWidget(createSettingsTestApp(
-        settingsModel: settingsModel,
-        todoListModel: todoListModel,
-      ));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          createSettingsTestApp(
+            settingsModel: settingsModel,
+            todoListModel: todoListModel,
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('owner/repo-one'), findsOneWidget);
-      expect(find.text('Active Repository'), findsOneWidget);
+        expect(find.text('owner/repo-one'), findsOneWidget);
+        expect(find.text('Active Repository'), findsOneWidget);
 
-      // Add a second repository
-      await tester.enterText(find.byType(TextFormField).at(1), 'owner/repo-two');
-      await tester.tap(find.text('Add'));
-      await tester.pumpAndSettle();
+        // Add a second repository
+        await tester.enterText(
+          find.byType(TextFormField).at(1),
+          'owner/repo-two',
+        );
+        await tester.tap(find.text('Add'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('owner/repo-two'), findsOneWidget);
-      expect(await settingsStore.getActiveRepo(), 'owner/repo-two');
+        expect(find.text('owner/repo-two'), findsOneWidget);
+        expect(await settingsStore.getActiveRepo(), 'owner/repo-two');
 
-      // Tap on first repository to switch back
-      await tester.tap(find.text('owner/repo-one'));
-      await tester.pumpAndSettle();
+        // Tap on first repository to switch back
+        await tester.tap(find.text('owner/repo-one'));
+        await tester.pumpAndSettle();
 
-      expect(await settingsStore.getActiveRepo(), 'owner/repo-one');
-    });
+        expect(await settingsStore.getActiveRepo(), 'owner/repo-one');
+      },
+    );
   });
 }

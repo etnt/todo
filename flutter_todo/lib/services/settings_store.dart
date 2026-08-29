@@ -10,8 +10,8 @@ class SettingsStore {
   SettingsStore({
     FlutterSecureStorage? secureStorage,
     SharedPreferences? sharedPreferences,
-  })  : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
-        _prefs = sharedPreferences;
+  }) : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
+       _prefs = sharedPreferences;
 
   final FlutterSecureStorage _secureStorage;
   SharedPreferences? _prefs;

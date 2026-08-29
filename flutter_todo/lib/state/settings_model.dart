@@ -8,7 +8,8 @@ class SettingsModel extends ChangeNotifier {
   SettingsModel({
     required this.settingsStore,
     GitHubApiClient Function(String? token)? clientFactory,
-  }) : _clientFactory = clientFactory ?? ((token) => GitHubApiClient(token: token));
+  }) : _clientFactory =
+           clientFactory ?? ((token) => GitHubApiClient(token: token));
 
   final SettingsStore settingsStore;
   final GitHubApiClient Function(String? token) _clientFactory;
@@ -60,7 +61,9 @@ class SettingsModel extends ChangeNotifier {
     final cleanRepo = repo.trim();
 
     if (!RegExp(r'^[^/\s]+/[^/\s]+$').hasMatch(cleanRepo)) {
-      throw const GitHubValidationException('Repository must be formatted as "owner/repo"');
+      throw const GitHubValidationException(
+        'Repository must be formatted as "owner/repo"',
+      );
     }
 
     final repoData = await client.testConnection(cleanRepo);

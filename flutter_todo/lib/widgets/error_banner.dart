@@ -35,10 +35,7 @@ class ErrorBanner extends StatelessWidget {
         color: containerColor,
         child: Row(
           children: [
-            Icon(
-              isRateLimit ? Icons.timer_outlined : icon,
-              color: iconColor,
-            ),
+            Icon(isRateLimit ? Icons.timer_outlined : icon, color: iconColor),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

@@ -4,10 +4,7 @@ import '../models/todo.dart';
 
 /// Metadata embedded inside a GitHub issue's body.
 class IssueMetadata {
-  const IssueMetadata({
-    this.priority,
-    this.deleted = false,
-  });
+  const IssueMetadata({this.priority, this.deleted = false});
 
   /// The custom priority ordering index, or null if unassigned.
   final int? priority;
@@ -16,9 +13,9 @@ class IssueMetadata {
   final bool deleted;
 
   Map<String, dynamic> toJson() => {
-        if (priority != null) 'priority': priority,
-        if (deleted) 'deleted': deleted,
-      };
+    if (priority != null) 'priority': priority,
+    if (deleted) 'deleted': deleted,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -123,7 +120,10 @@ class IssueMetaCodec {
   /// Converts a GitHub issue map into a [Todo] instance.
   ///
   /// Returns `null` if the issue is marked as deleted or is a Pull Request.
-  static Todo? fromGitHubIssue(Map<String, dynamic> issue, {int defaultPriority = 0}) {
+  static Todo? fromGitHubIssue(
+    Map<String, dynamic> issue, {
+    int defaultPriority = 0,
+  }) {
     // Filter out pull requests
     if (issue.containsKey('pull_request') && issue['pull_request'] != null) {
       return null;

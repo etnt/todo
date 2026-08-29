@@ -97,7 +97,8 @@ class _TodoListScreenState extends State<TodoListScreen> {
       case TodoFilterView.done:
         return const EmptyState(
           title: 'No completed tasks yet',
-          subtitle: 'Swipe right or tap checkbox on any active task to mark it done.',
+          subtitle:
+              'Swipe right or tap checkbox on any active task to mark it done.',
           icon: Icons.task_alt,
         );
       case TodoFilterView.all:
@@ -110,19 +111,15 @@ class _TodoListScreenState extends State<TodoListScreen> {
   }
 
   void _openDetail(Todo todo) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TodoDetailScreen(todo: todo),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => TodoDetailScreen(todo: todo)));
   }
 
   void _openAdd() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const TodoEditScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const TodoEditScreen()));
   }
 
   @override
@@ -149,17 +146,25 @@ class _TodoListScreenState extends State<TodoListScreen> {
                       child: Row(
                         children: [
                           Icon(
-                            isCurrent ? Icons.check_circle : Icons.circle_outlined,
+                            isCurrent
+                                ? Icons.check_circle
+                                : Icons.circle_outlined,
                             size: 18,
-                            color: isCurrent ? theme.colorScheme.primary : theme.colorScheme.outline,
+                            color: isCurrent
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.outline,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               r,
                               style: TextStyle(
-                                fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                                color: isCurrent ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                                fontWeight: isCurrent
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: isCurrent
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurface,
                               ),
                             ),
                           ),
@@ -180,7 +185,10 @@ class _TodoListScreenState extends State<TodoListScreen> {
                             crossAxisAlignment: CrossAxisAlignment.baseline,
                             textBaseline: TextBaseline.alphabetic,
                             children: [
-                              const Text('TODOs', style: TextStyle(fontWeight: FontWeight.bold)),
+                              const Text(
+                                'TODOs',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
                               const SizedBox(width: 6),
                               Text(
                                 appVersion,
@@ -215,7 +223,10 @@ class _TodoListScreenState extends State<TodoListScreen> {
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      const Text('TODOs', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Text(
+                        'TODOs',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         appVersion,
@@ -279,9 +290,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
           ),
 
           if (todoList.isLoading && todos.isEmpty)
-            const Expanded(
-              child: Center(child: CircularProgressIndicator()),
-            )
+            const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (todos.isEmpty)
             Expanded(
               child: RefreshIndicator(

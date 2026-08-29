@@ -6,10 +6,7 @@ import '../state/todo_list_model.dart';
 
 /// Screen for adding a new TODO or editing an existing one.
 class TodoEditScreen extends StatefulWidget {
-  const TodoEditScreen({
-    super.key,
-    this.todo,
-  });
+  const TodoEditScreen({super.key, this.todo});
 
   /// If provided, the screen operates in Edit mode; otherwise, in Add mode.
   final Todo? todo;
@@ -58,7 +55,8 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
   bool _hasUnsavedChanges() {
     final origHeader = widget.todo?.header ?? '';
     final origBody = widget.todo?.body ?? '';
-    return _headerController.text != origHeader || _bodyController.text != origBody;
+    return _headerController.text != origHeader ||
+        _bodyController.text != origBody;
   }
 
   Future<bool> _onWillPop() async {
@@ -70,7 +68,9 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Discard changes?'),
-        content: const Text('You have unsaved changes. Are you sure you want to discard them?'),
+        content: const Text(
+          'You have unsaved changes. Are you sure you want to discard them?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -245,7 +245,11 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
                             ),
                           )
                         : const Icon(Icons.save),
-                    label: Text(_isSaving ? 'Saving...' : (_isEditing ? 'Update TODO' : 'Create TODO')),
+                    label: Text(
+                      _isSaving
+                          ? 'Saving...'
+                          : (_isEditing ? 'Update TODO' : 'Create TODO'),
+                    ),
                   ),
                 ],
               ),

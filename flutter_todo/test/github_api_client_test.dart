@@ -67,7 +67,11 @@ void main() {
           return http.Response(
             jsonEncode([
               {'number': 1, 'title': 'Issue 1'},
-              {'number': 2, 'title': 'PR 1', 'pull_request': {'url': '...'}},
+              {
+                'number': 2,
+                'title': 'PR 1',
+                'pull_request': {'url': '...'},
+              },
             ]),
             200,
           );
@@ -124,11 +128,9 @@ void main() {
       });
 
       final client = GitHubApiClient(httpClient: fakeClient);
-      final updated = await client.patchIssue(
-        'owner/repo',
-        42,
-        {'state': 'closed'},
-      );
+      final updated = await client.patchIssue('owner/repo', 42, {
+        'state': 'closed',
+      });
 
       expect(updated['state'], 'closed');
       expect(fakeClient.jsonBodyOf(0), {'state': 'closed'});
@@ -137,87 +139,119 @@ void main() {
 
   group('GitHubApiClient Error Handling Hierarchy', () {
     test('maps 401 to GitHubAuthException', () async {
-      final fakeClient = FakeClient((_) => http.Response(
-            jsonEncode({'message': 'Bad credentials'}),
-            401,
-          ));
+      final fakeClient = FakeClient(
+        (_) => http.Response(jsonEncode({'message': 'Bad credentials'}), 401),
+      );
 
       final client = GitHubApiClient(httpClient: fakeClient);
 
       expect(
         () => client.testConnection('owner/repo'),
-        throwsA(isA<GitHubAuthException>().having((e) => e.statusCode, 'statusCode', 401)),
+        throwsA(
+          isA<GitHubAuthException>().having(
+            (e) => e.statusCode,
+            'statusCode',
+            401,
+          ),
+        ),
       );
     });
 
-    test('maps 403 rate limit to GitHubRateLimitException with reset time', () async {
-      final fakeClient = FakeClient((_) => http.Response(
+    test(
+      'maps 403 rate limit to GitHubRateLimitException with reset time',
+      () async {
+        final fakeClient = FakeClient(
+          (_) => http.Response(
             jsonEncode({'message': 'API rate limit exceeded'}),
             403,
             headers: {
               'x-ratelimit-remaining': '0',
               'x-ratelimit-reset': '1700000000',
             },
-          ));
+          ),
+        );
 
-      final client = GitHubApiClient(httpClient: fakeClient);
+        final client = GitHubApiClient(httpClient: fakeClient);
 
-      expect(
-        () => client.testConnection('owner/repo'),
-        throwsA(isA<GitHubRateLimitException>()
-            .having((e) => e.statusCode, 'statusCode', 403)
-            .having(
-              (e) => e.resetTime,
-              'resetTime',
-              DateTime.fromMillisecondsSinceEpoch(1700000000 * 1000, isUtc: true),
-            )),
-      );
-    });
+        expect(
+          () => client.testConnection('owner/repo'),
+          throwsA(
+            isA<GitHubRateLimitException>()
+                .having((e) => e.statusCode, 'statusCode', 403)
+                .having(
+                  (e) => e.resetTime,
+                  'resetTime',
+                  DateTime.fromMillisecondsSinceEpoch(
+                    1700000000 * 1000,
+                    isUtc: true,
+                  ),
+                ),
+          ),
+        );
+      },
+    );
 
     test('maps 403 without rate limit to GitHubAuthException', () async {
-      final fakeClient = FakeClient((_) => http.Response(
-            jsonEncode({'message': 'Forbidden'}),
-            403,
-          ));
+      final fakeClient = FakeClient(
+        (_) => http.Response(jsonEncode({'message': 'Forbidden'}), 403),
+      );
 
       final client = GitHubApiClient(httpClient: fakeClient);
 
       expect(
         () => client.testConnection('owner/repo'),
-        throwsA(isA<GitHubAuthException>().having((e) => e.statusCode, 'statusCode', 403)),
+        throwsA(
+          isA<GitHubAuthException>().having(
+            (e) => e.statusCode,
+            'statusCode',
+            403,
+          ),
+        ),
       );
     });
 
     test('maps 404 to GitHubNotFoundException', () async {
-      final fakeClient = FakeClient((_) => http.Response(
-            jsonEncode({'message': 'Not Found'}),
-            404,
-          ));
+      final fakeClient = FakeClient(
+        (_) => http.Response(jsonEncode({'message': 'Not Found'}), 404),
+      );
 
       final client = GitHubApiClient(httpClient: fakeClient);
 
       expect(
         () => client.testConnection('owner/repo'),
-        throwsA(isA<GitHubNotFoundException>().having((e) => e.statusCode, 'statusCode', 404)),
+        throwsA(
+          isA<GitHubNotFoundException>().having(
+            (e) => e.statusCode,
+            'statusCode',
+            404,
+          ),
+        ),
       );
     });
 
     test('maps 422 to GitHubValidationException', () async {
-      final fakeClient = FakeClient((_) => http.Response(
-            jsonEncode({'message': 'Validation Failed'}),
-            422,
-          ));
+      final fakeClient = FakeClient(
+        (_) => http.Response(jsonEncode({'message': 'Validation Failed'}), 422),
+      );
 
       final client = GitHubApiClient(httpClient: fakeClient);
 
       expect(
         () => client.createIssue('owner/repo', title: '', body: ''),
-        throwsA(isA<GitHubValidationException>().having((e) => e.statusCode, 'statusCode', 422)),
+        throwsA(
+          isA<GitHubValidationException>().having(
+            (e) => e.statusCode,
+            'statusCode',
+            422,
+          ),
+        ),
       );
     });
 
     test('maps http.ClientException to GitHubNetworkException', () async {
-      final fakeClient = FakeClient((_) => throw http.ClientException('Failed to connect'));
+      final fakeClient = FakeClient(
+        (_) => throw http.ClientException('Failed to connect'),
+      );
 
       final client = GitHubApiClient(httpClient: fakeClient);
 
@@ -227,5 +261,4 @@ void main() {
       );
     });
   });
-
 }

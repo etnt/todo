@@ -3,22 +3,28 @@ import 'package:flutter_todo/services/issue_meta_codec.dart';
 
 void main() {
   group('IssueMetaCodec encoding and decoding', () {
-    test('encodes empty body into comment-only string matching Python format', () {
-      const meta = IssueMetadata(priority: 2, deleted: false);
-      final encoded = IssueMetaCodec.encode('', meta);
+    test(
+      'encodes empty body into comment-only string matching Python format',
+      () {
+        const meta = IssueMetadata(priority: 2, deleted: false);
+        final encoded = IssueMetaCodec.encode('', meta);
 
-      expect(encoded, '<!-- todo-meta: {"priority":2,"deleted":false} -->');
-    });
+        expect(encoded, '<!-- todo-meta: {"priority":2,"deleted":false} -->');
+      },
+    );
 
-    test('encodes multiline body with trailing metadata comment matching Python format', () {
-      const meta = IssueMetadata(priority: 0, deleted: false);
-      final encoded = IssueMetaCodec.encode('Hello world\nSecond line', meta);
+    test(
+      'encodes multiline body with trailing metadata comment matching Python format',
+      () {
+        const meta = IssueMetadata(priority: 0, deleted: false);
+        final encoded = IssueMetaCodec.encode('Hello world\nSecond line', meta);
 
-      expect(
-        encoded,
-        'Hello world\nSecond line\n\n<!-- todo-meta: {"priority":0,"deleted":false} -->',
-      );
-    });
+        expect(
+          encoded,
+          'Hello world\nSecond line\n\n<!-- todo-meta: {"priority":0,"deleted":false} -->',
+        );
+      },
+    );
 
     test('decodes clean body and metadata correctly', () {
       const rawBody =
@@ -40,7 +46,8 @@ void main() {
     });
 
     test('decodes body without metadata comment safely', () {
-      const rawBody = 'This is an issue created outside the app without any metadata.';
+      const rawBody =
+          'This is an issue created outside the app without any metadata.';
       final decoded = IssueMetaCodec.decode(rawBody);
 
       expect(decoded.body, rawBody);
@@ -48,18 +55,21 @@ void main() {
       expect(decoded.metadata.deleted, isFalse);
     });
 
-    test('finds the last comment occurrence if text contains literal comment markers', () {
-      const rawBody =
-          'Example code:\n<!-- todo-meta: {"priority":999} -->\nActual note body\n\n<!-- todo-meta: {"priority":1,"deleted":false} -->';
-      final decoded = IssueMetaCodec.decode(rawBody);
+    test(
+      'finds the last comment occurrence if text contains literal comment markers',
+      () {
+        const rawBody =
+            'Example code:\n<!-- todo-meta: {"priority":999} -->\nActual note body\n\n<!-- todo-meta: {"priority":1,"deleted":false} -->';
+        final decoded = IssueMetaCodec.decode(rawBody);
 
-      expect(
-        decoded.body,
-        'Example code:\n<!-- todo-meta: {"priority":999} -->\nActual note body',
-      );
-      expect(decoded.metadata.priority, 1);
-      expect(decoded.metadata.deleted, isFalse);
-    });
+        expect(
+          decoded.body,
+          'Example code:\n<!-- todo-meta: {"priority":999} -->\nActual note body',
+        );
+        expect(decoded.metadata.priority, 1);
+        expect(decoded.metadata.deleted, isFalse);
+      },
+    );
 
     test('handles malformed JSON gracefully', () {
       const rawBody = 'Some text\n\n<!-- todo-meta: {invalid json} -->';
@@ -88,7 +98,8 @@ void main() {
       final issueJson = {
         'number': 101,
         'title': 'Write Flutter tests',
-        'body': 'Cover all model logic\n\n<!-- todo-meta: {"priority":2,"deleted":false} -->',
+        'body':
+            'Cover all model logic\n\n<!-- todo-meta: {"priority":2,"deleted":false} -->',
         'state': 'open',
         'created_at': '2026-08-28T10:00:00Z',
         'closed_at': null,
@@ -135,7 +146,9 @@ void main() {
         'title': 'PR: Update dependencies',
         'body': 'Bump versions',
         'state': 'open',
-        'pull_request': {'url': 'https://api.github.com/repos/owner/repo/pulls/103'},
+        'pull_request': {
+          'url': 'https://api.github.com/repos/owner/repo/pulls/103',
+        },
       };
 
       final todo = IssueMetaCodec.fromGitHubIssue(prJson);
@@ -165,11 +178,13 @@ void main() {
         'created_at': '2026-08-28T11:00:00Z',
       };
 
-      final todo = IssueMetaCodec.fromGitHubIssue(externalIssueJson, defaultPriority: 42);
+      final todo = IssueMetaCodec.fromGitHubIssue(
+        externalIssueJson,
+        defaultPriority: 42,
+      );
 
       expect(todo, isNotNull);
       expect(todo!.priority, 42);
     });
   });
-
 }

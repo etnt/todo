@@ -9,8 +9,9 @@ class GitHubApiException implements Exception {
   final int? statusCode;
 
   @override
-  String toString() =>
-      statusCode != null ? 'GitHubApiException ($statusCode): $message' : 'GitHubApiException: $message';
+  String toString() => statusCode != null
+      ? 'GitHubApiException ($statusCode): $message'
+      : 'GitHubApiException: $message';
 }
 
 /// Thrown when authentication fails (HTTP 401) or permissions are denied (HTTP 403 without rate limit).
@@ -25,7 +26,11 @@ class GitHubNotFoundException extends GitHubApiException {
 
 /// Thrown when GitHub rate limit is exceeded (HTTP 403 with X-RateLimit-Remaining: 0).
 class GitHubRateLimitException extends GitHubApiException {
-  const GitHubRateLimitException(super.message, {this.resetTime, super.statusCode});
+  const GitHubRateLimitException(
+    super.message, {
+    this.resetTime,
+    super.statusCode,
+  });
 
   final DateTime? resetTime;
 }
@@ -59,11 +64,11 @@ class GitHubApiClient {
   static const defaultPageSize = 100;
 
   Map<String, String> get _headers => {
-        'Accept': 'application/vnd.github+json',
-        'Content-Type': 'application/json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        if (token != null && token!.isNotEmpty) 'Authorization': 'Bearer $token',
-      };
+    'Accept': 'application/vnd.github+json',
+    'Content-Type': 'application/json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    if (token != null && token!.isNotEmpty) 'Authorization': 'Bearer $token',
+  };
 
   Uri _buildUri(String path, [Map<String, String>? queryParameters]) {
     final base = Uri.parse(baseUrl);
@@ -88,7 +93,10 @@ class GitHubApiClient {
     }
 
     if (status == 401) {
-      throw GitHubAuthException('Invalid or missing GitHub token: $message', statusCode: status);
+      throw GitHubAuthException(
+        'Invalid or missing GitHub token: $message',
+        statusCode: status,
+      );
     }
 
     if (status == 403) {
@@ -99,7 +107,10 @@ class GitHubApiClient {
         if (resetTimestampStr != null) {
           final epochSec = int.tryParse(resetTimestampStr);
           if (epochSec != null) {
-            resetTime = DateTime.fromMillisecondsSinceEpoch(epochSec * 1000, isUtc: true);
+            resetTime = DateTime.fromMillisecondsSinceEpoch(
+              epochSec * 1000,
+              isUtc: true,
+            );
           }
         }
         throw GitHubRateLimitException(
@@ -108,15 +119,24 @@ class GitHubApiClient {
           statusCode: status,
         );
       }
-      throw GitHubAuthException('Access forbidden: $message', statusCode: status);
+      throw GitHubAuthException(
+        'Access forbidden: $message',
+        statusCode: status,
+      );
     }
 
     if (status == 404) {
-      throw GitHubNotFoundException('Resource not found: $message', statusCode: status);
+      throw GitHubNotFoundException(
+        'Resource not found: $message',
+        statusCode: status,
+      );
     }
 
     if (status == 422) {
-      throw GitHubValidationException('Validation failed: $message', statusCode: status);
+      throw GitHubValidationException(
+        'Validation failed: $message',
+        statusCode: status,
+      );
     }
 
     throw GitHubApiException('GitHub API error: $message', statusCode: status);
@@ -138,22 +158,40 @@ class GitHubApiClient {
           response = await _client.get(uri, headers: _headers);
           break;
         case 'POST':
-          response = await _client.post(uri, headers: _headers, body: encodedBody);
+          response = await _client.post(
+            uri,
+            headers: _headers,
+            body: encodedBody,
+          );
           break;
         case 'PATCH':
-          response = await _client.patch(uri, headers: _headers, body: encodedBody);
+          response = await _client.patch(
+            uri,
+            headers: _headers,
+            body: encodedBody,
+          );
           break;
         case 'DELETE':
-          response = await _client.delete(uri, headers: _headers, body: encodedBody);
+          response = await _client.delete(
+            uri,
+            headers: _headers,
+            body: encodedBody,
+          );
           break;
         default:
           throw ArgumentError('Unsupported HTTP method: $method');
       }
     } on http.ClientException catch (e) {
-      throw GitHubNetworkException('Network error during request to $uri: ${e.message}', cause: e);
+      throw GitHubNetworkException(
+        'Network error during request to $uri: ${e.message}',
+        cause: e,
+      );
     } catch (e) {
       if (e is GitHubApiException) rethrow;
-      throw GitHubNetworkException('Failed to communicate with GitHub API: $e', cause: e);
+      throw GitHubNetworkException(
+        'Failed to communicate with GitHub API: $e',
+        cause: e,
+      );
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -170,7 +208,6 @@ class GitHubApiClient {
       throw GitHubApiException('Failed to decode GitHub API JSON response: $e');
     }
   }
-
 
   /// Tests access to [repo] (e.g. `owner/repo`).
   Future<Map<String, dynamic>> testConnection(String repo) async {
@@ -209,7 +246,11 @@ class GitHubApiClient {
     }
 
     return allIssues
-        .where((issue) => !issue.containsKey('pull_request') || issue['pull_request'] == null)
+        .where(
+          (issue) =>
+              !issue.containsKey('pull_request') ||
+              issue['pull_request'] == null,
+        )
         .toList();
   }
 
@@ -222,10 +263,7 @@ class GitHubApiClient {
     final result = await _request(
       'POST',
       '/repos/$repo/issues',
-      body: {
-        'title': title,
-        'body': body,
-      },
+      body: {'title': title, 'body': body},
     );
     return result as Map<String, dynamic>;
   }
@@ -244,4 +282,3 @@ class GitHubApiClient {
     return result as Map<String, dynamic>;
   }
 }
-

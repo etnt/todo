@@ -6,9 +6,7 @@ enum TodoFilterView { active, done, all }
 
 /// State model managing the TODO list, filtering, loading, and error states.
 class TodoListModel extends ChangeNotifier {
-  TodoListModel({
-    TodoRepository? repository,
-  }) : _repo = repository;
+  TodoListModel({TodoRepository? repository}) : _repo = repository;
 
   TodoRepository? _repo;
 

@@ -28,9 +28,7 @@ Widget createTodoListTestApp({
     ],
     child: MaterialApp(
       home: const TodoListScreen(),
-      routes: {
-        '/settings': (_) => const SettingsScreen(),
-      },
+      routes: {'/settings': (_) => const SettingsScreen()},
     ),
   );
 }
@@ -52,7 +50,9 @@ void main() {
   });
 
   group('TodoListScreen Display & Filtering', () {
-    testWidgets('displays active todos and switches filter tabs', (tester) async {
+    testWidgets('displays active todos and switches filter tabs', (
+      tester,
+    ) async {
       final fakeClient = FakeClient((request) {
         if (request.url.path == '/repos/owner/test-repo/issues') {
           return http.Response(
@@ -60,13 +60,15 @@ void main() {
               {
                 'number': 1,
                 'title': 'Active Task',
-                'body': 'Body 1\n\n<!-- todo-meta: {"priority":0,"deleted":false} -->',
+                'body':
+                    'Body 1\n\n<!-- todo-meta: {"priority":0,"deleted":false} -->',
                 'state': 'open',
               },
               {
                 'number': 2,
                 'title': 'Done Task',
-                'body': 'Body 2\n\n<!-- todo-meta: {"priority":1,"deleted":false} -->',
+                'body':
+                    'Body 2\n\n<!-- todo-meta: {"priority":1,"deleted":false} -->',
                 'state': 'closed',
               },
             ]),
@@ -77,13 +79,18 @@ void main() {
       });
 
       final apiClient = GitHubApiClient(httpClient: fakeClient);
-      final repo = TodoRepository(apiClient: apiClient, repo: 'owner/test-repo');
+      final repo = TodoRepository(
+        apiClient: apiClient,
+        repo: 'owner/test-repo',
+      );
       todoListModel.setRepository(repo);
 
-      await tester.pumpWidget(createTodoListTestApp(
-        settingsModel: settingsModel,
-        todoListModel: todoListModel,
-      ));
+      await tester.pumpWidget(
+        createTodoListTestApp(
+          settingsModel: settingsModel,
+          todoListModel: todoListModel,
+        ),
+      );
       await tester.pumpAndSettle();
 
       // Initially on 'Active' tab
@@ -106,10 +113,12 @@ void main() {
     });
 
     testWidgets('shows empty state when no todos are present', (tester) async {
-      await tester.pumpWidget(createTodoListTestApp(
-        settingsModel: settingsModel,
-        todoListModel: todoListModel,
-      ));
+      await tester.pumpWidget(
+        createTodoListTestApp(
+          settingsModel: settingsModel,
+          todoListModel: todoListModel,
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(EmptyState), findsOneWidget);
@@ -117,15 +126,20 @@ void main() {
     });
 
     testWidgets('shows error banner when errorMessage is set', (tester) async {
-      await tester.pumpWidget(createTodoListTestApp(
-        settingsModel: settingsModel,
-        todoListModel: todoListModel,
-      ));
+      await tester.pumpWidget(
+        createTodoListTestApp(
+          settingsModel: settingsModel,
+          todoListModel: todoListModel,
+        ),
+      );
       await tester.pumpAndSettle();
 
       final fakeClient = FakeClient((_) => throw Exception('Network Failure'));
       final apiClient = GitHubApiClient(httpClient: fakeClient);
-      final repo = TodoRepository(apiClient: apiClient, repo: 'owner/test-repo');
+      final repo = TodoRepository(
+        apiClient: apiClient,
+        repo: 'owner/test-repo',
+      );
       todoListModel.setRepository(repo);
       await todoListModel.loadTodos();
 
@@ -136,7 +150,9 @@ void main() {
       expect(find.text('Retry'), findsOneWidget);
     });
 
-    testWidgets('provides popup menu when multiple repositories are configured', (tester) async {
+    testWidgets('provides popup menu when multiple repositories are configured', (
+      tester,
+    ) async {
       await settingsStore.addRepo('owner/second-repo', makeActive: false);
 
       final fakeClient = FakeClient((request) {
@@ -146,7 +162,8 @@ void main() {
               {
                 'number': 10,
                 'title': 'Task in Repo 2',
-                'body': 'Body\n\n<!-- todo-meta: {"priority":0,"deleted":false} -->',
+                'body':
+                    'Body\n\n<!-- todo-meta: {"priority":0,"deleted":false} -->',
                 'state': 'open',
               },
             ]),
@@ -158,14 +175,17 @@ void main() {
 
       settingsModel = SettingsModel(
         settingsStore: settingsStore,
-        clientFactory: (token) => GitHubApiClient(token: token, httpClient: fakeClient),
+        clientFactory: (token) =>
+            GitHubApiClient(token: token, httpClient: fakeClient),
       );
       await settingsModel.loadSettings();
 
-      await tester.pumpWidget(createTodoListTestApp(
-        settingsModel: settingsModel,
-        todoListModel: todoListModel,
-      ));
+      await tester.pumpWidget(
+        createTodoListTestApp(
+          settingsModel: settingsModel,
+          todoListModel: todoListModel,
+        ),
+      );
       await tester.pumpAndSettle();
 
       // Tap on the repo dropdown title
@@ -186,21 +206,30 @@ void main() {
   });
 
   group('TodoListTile Widget Tests', () {
-    testWidgets('renders todo item and toggles status on checkbox tap', (tester) async {
+    testWidgets('renders todo item and toggles status on checkbox tap', (
+      tester,
+    ) async {
       var toggled = false;
       var deleted = false;
-      final todo = Todo(id: '10', header: 'Buy groceries', body: 'Milk', priority: 0);
+      final todo = Todo(
+        id: '10',
+        header: 'Buy groceries',
+        body: 'Milk',
+        priority: 0,
+      );
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: TodoListTile(
-            todo: todo,
-            index: 0,
-            onToggle: () => toggled = true,
-            onDelete: () => deleted = true,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TodoListTile(
+              todo: todo,
+              index: 0,
+              onToggle: () => toggled = true,
+              onDelete: () => deleted = true,
+            ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Buy groceries'), findsOneWidget);

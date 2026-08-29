@@ -16,9 +16,7 @@ Widget createDetailScreenTestApp({
 }) {
   return ChangeNotifierProvider.value(
     value: todoListModel,
-    child: MaterialApp(
-      home: TodoDetailScreen(todo: todo),
-    ),
+    child: MaterialApp(home: TodoDetailScreen(todo: todo)),
   );
 }
 
@@ -26,7 +24,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('TodoDetailScreen Rendering and Actions', () {
-    testWidgets('renders full todo title, body, priority, and timestamps', (tester) async {
+    testWidgets('renders full todo title, body, priority, and timestamps', (
+      tester,
+    ) async {
       final todo = Todo(
         id: '123',
         header: 'Ship release build',
@@ -39,15 +39,17 @@ void main() {
 
       final todoListModel = TodoListModel();
 
-      await tester.pumpWidget(createDetailScreenTestApp(
-        todoListModel: todoListModel,
-        todo: todo,
-      ));
+      await tester.pumpWidget(
+        createDetailScreenTestApp(todoListModel: todoListModel, todo: todo),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Issue #123'), findsOneWidget);
       expect(find.text('Ship release build'), findsOneWidget);
-      expect(find.text('Check release keystore and permissions.'), findsOneWidget);
+      expect(
+        find.text('Check release keystore and permissions.'),
+        findsOneWidget,
+      );
       expect(find.text('Active'), findsOneWidget);
       expect(find.text('4'), findsOneWidget);
       expect(find.text('Mark as Completed'), findsOneWidget);
@@ -62,7 +64,10 @@ void main() {
       });
 
       final apiClient = GitHubApiClient(httpClient: fakeClient);
-      final repo = TodoRepository(apiClient: apiClient, repo: 'owner/test-repo');
+      final repo = TodoRepository(
+        apiClient: apiClient,
+        repo: 'owner/test-repo',
+      );
       final todoListModel = TodoListModel(repository: repo);
 
       final todo = Todo(
@@ -72,10 +77,9 @@ void main() {
         status: 'active',
       );
 
-      await tester.pumpWidget(createDetailScreenTestApp(
-        todoListModel: todoListModel,
-        todo: todo,
-      ));
+      await tester.pumpWidget(
+        createDetailScreenTestApp(todoListModel: todoListModel, todo: todo),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Mark as Completed'));
@@ -86,39 +90,40 @@ void main() {
       expect(find.text('Reopen (Mark Active)'), findsOneWidget);
     });
 
-    testWidgets('shows delete confirmation dialog and deletes item on confirm', (tester) async {
-      final fakeClient = FakeClient((request) {
-        if (request.method == 'PATCH') {
-          return http.Response('{"number": 123}', 200);
-        }
-        return http.Response('error', 400);
-      });
+    testWidgets(
+      'shows delete confirmation dialog and deletes item on confirm',
+      (tester) async {
+        final fakeClient = FakeClient((request) {
+          if (request.method == 'PATCH') {
+            return http.Response('{"number": 123}', 200);
+          }
+          return http.Response('error', 400);
+        });
 
-      final apiClient = GitHubApiClient(httpClient: fakeClient);
-      final repo = TodoRepository(apiClient: apiClient, repo: 'owner/test-repo');
-      final todoListModel = TodoListModel(repository: repo);
+        final apiClient = GitHubApiClient(httpClient: fakeClient);
+        final repo = TodoRepository(
+          apiClient: apiClient,
+          repo: 'owner/test-repo',
+        );
+        final todoListModel = TodoListModel(repository: repo);
 
-      final todo = Todo(
-        id: '123',
-        header: 'To be deleted',
-        body: 'Body',
-      );
+        final todo = Todo(id: '123', header: 'To be deleted', body: 'Body');
 
-      await tester.pumpWidget(createDetailScreenTestApp(
-        todoListModel: todoListModel,
-        todo: todo,
-      ));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          createDetailScreenTestApp(todoListModel: todoListModel, todo: todo),
+        );
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.delete_outline));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byIcon(Icons.delete_outline));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Delete TODO?'), findsOneWidget);
+        expect(find.text('Delete TODO?'), findsOneWidget);
 
-      await tester.tap(find.text('Delete'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Delete'));
+        await tester.pumpAndSettle();
 
-      expect(fakeClient.requests, hasLength(1));
-    });
+        expect(fakeClient.requests, hasLength(1));
+      },
+    );
   });
 }

@@ -55,10 +55,7 @@ void main() {
         priority: 1,
       );
 
-      final updated = original.copyWith(
-        header: 'New Title',
-        priority: 5,
-      );
+      final updated = original.copyWith(header: 'New Title', priority: 5);
 
       expect(updated.id, '123');
       expect(updated.header, 'New Title');

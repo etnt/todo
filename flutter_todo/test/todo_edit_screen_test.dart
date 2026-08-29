@@ -17,9 +17,7 @@ Widget createEditScreenTestApp({
 }) {
   return ChangeNotifierProvider.value(
     value: todoListModel,
-    child: MaterialApp(
-      home: TodoEditScreen(todo: todo),
-    ),
+    child: MaterialApp(home: TodoEditScreen(todo: todo)),
   );
 }
 
@@ -27,22 +25,29 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('TodoEditScreen in Add Mode', () {
-    testWidgets('renders empty fields and title validation error on empty submit', (tester) async {
-      final todoListModel = TodoListModel();
+    testWidgets(
+      'renders empty fields and title validation error on empty submit',
+      (tester) async {
+        final todoListModel = TodoListModel();
 
-      await tester.pumpWidget(createEditScreenTestApp(todoListModel: todoListModel));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          createEditScreenTestApp(todoListModel: todoListModel),
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('New TODO'), findsOneWidget);
-      expect(find.text('Create TODO'), findsOneWidget);
+        expect(find.text('New TODO'), findsOneWidget);
+        expect(find.text('Create TODO'), findsOneWidget);
 
-      await tester.tap(find.text('Create TODO'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Create TODO'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Please enter a title for the TODO'), findsOneWidget);
-    });
+        expect(find.text('Please enter a title for the TODO'), findsOneWidget);
+      },
+    );
 
-    testWidgets('creates a new TODO successfully and pops screen', (tester) async {
+    testWidgets('creates a new TODO successfully and pops screen', (
+      tester,
+    ) async {
       final fakeClient = FakeClient((request) {
         if (request.method == 'POST') {
           final bodyMap = jsonDecode((request as http.Request).body);
@@ -61,10 +66,15 @@ void main() {
       });
 
       final apiClient = GitHubApiClient(httpClient: fakeClient);
-      final repo = TodoRepository(apiClient: apiClient, repo: 'owner/test-repo');
+      final repo = TodoRepository(
+        apiClient: apiClient,
+        repo: 'owner/test-repo',
+      );
       final todoListModel = TodoListModel(repository: repo);
 
-      await tester.pumpWidget(createEditScreenTestApp(todoListModel: todoListModel));
+      await tester.pumpWidget(
+        createEditScreenTestApp(todoListModel: todoListModel),
+      );
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).at(0), 'Buy milk');
@@ -80,7 +90,9 @@ void main() {
   });
 
   group('TodoEditScreen in Edit Mode', () {
-    testWidgets('populates existing fields and updates TODO on save', (tester) async {
+    testWidgets('populates existing fields and updates TODO on save', (
+      tester,
+    ) async {
       final fakeClient = FakeClient((request) {
         if (request.method == 'PATCH') {
           return http.Response('{"number": 42}', 200);
@@ -89,15 +101,24 @@ void main() {
       });
 
       final apiClient = GitHubApiClient(httpClient: fakeClient);
-      final repo = TodoRepository(apiClient: apiClient, repo: 'owner/test-repo');
+      final repo = TodoRepository(
+        apiClient: apiClient,
+        repo: 'owner/test-repo',
+      );
       final todoListModel = TodoListModel(repository: repo);
 
-      final existingTodo = Todo(id: '42', header: 'Old Title', body: 'Old Body');
+      final existingTodo = Todo(
+        id: '42',
+        header: 'Old Title',
+        body: 'Old Body',
+      );
 
-      await tester.pumpWidget(createEditScreenTestApp(
-        todoListModel: todoListModel,
-        todo: existingTodo,
-      ));
+      await tester.pumpWidget(
+        createEditScreenTestApp(
+          todoListModel: todoListModel,
+          todo: existingTodo,
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Edit TODO'), findsOneWidget);

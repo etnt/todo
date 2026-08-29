@@ -28,7 +28,10 @@ class TodoListTile extends StatelessWidget {
     }
   }
 
-  Future<bool?> _confirmDismiss(BuildContext context, DismissDirection direction) async {
+  Future<bool?> _confirmDismiss(
+    BuildContext context,
+    DismissDirection direction,
+  ) async {
     if (direction == DismissDirection.startToEnd) {
       onToggle();
       return false; // don't remove from widget tree; let state notify
@@ -37,7 +40,9 @@ class TodoListTile extends StatelessWidget {
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('Delete TODO?'),
-          content: Text('Are you sure you want to delete "${todo.header}"? This will close the GitHub issue and mark it as deleted.'),
+          content: Text(
+            'Are you sure you want to delete "${todo.header}"? This will close the GitHub issue and mark it as deleted.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
@@ -87,7 +92,10 @@ class TodoListTile extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               isDone ? 'Mark Active' : 'Mark Done',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -101,7 +109,10 @@ class TodoListTile extends StatelessWidget {
           children: [
             Text(
               'Delete',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             SizedBox(width: 8),
             Icon(Icons.delete_outline, color: Colors.white),
@@ -111,14 +122,23 @@ class TodoListTile extends StatelessWidget {
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         elevation: isDone ? 0 : 1,
-        color: isDone ? theme.colorScheme.surfaceContainerHighest.withAlpha(120) : null,
+        color: isDone
+            ? theme.colorScheme.surfaceContainerHighest.withAlpha(120)
+            : null,
         child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 2,
+          ),
           leading: Semantics(
-            label: isDone ? 'Mark "${todo.header}" as active' : 'Mark "${todo.header}" as completed',
+            label: isDone
+                ? 'Mark "${todo.header}" as active'
+                : 'Mark "${todo.header}" as completed',
             child: Checkbox(
               value: isDone,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
               onChanged: (_) => onToggle(),
             ),
           ),
@@ -128,7 +148,9 @@ class TodoListTile extends StatelessWidget {
               fontSize: 16,
               fontWeight: isDone ? FontWeight.normal : FontWeight.w600,
               decoration: isDone ? TextDecoration.lineThrough : null,
-              color: isDone ? theme.colorScheme.outline : theme.colorScheme.onSurface,
+              color: isDone
+                  ? theme.colorScheme.outline
+                  : theme.colorScheme.onSurface,
             ),
           ),
           subtitle: todo.createdDate != null

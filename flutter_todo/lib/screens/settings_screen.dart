@@ -97,7 +97,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         setState(() {
           _testSuccessMessage = null;
-          _testErrorMessage = e is GitHubApiException ? e.message : e.toString();
+          _testErrorMessage = e is GitHubApiException
+              ? e.message
+              : e.toString();
         });
       }
     } finally {
@@ -197,7 +199,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Remove Repository?'),
-        content: Text('Are you sure you want to remove "$repo" from your list? Issues in GitHub will not be affected.'),
+        content: Text(
+          'Are you sure you want to remove "$repo" from your list? Issues in GitHub will not be affected.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -219,7 +223,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (settings.activeRepo.isNotEmpty) {
         final apiClient = settings.createApiClient();
-        final repository = TodoRepository(apiClient: apiClient, repo: settings.activeRepo);
+        final repository = TodoRepository(
+          apiClient: apiClient,
+          repo: settings.activeRepo,
+        );
         todoList.setRepository(repository);
         todoList.loadTodos();
       }
@@ -253,7 +260,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (settings.activeRepo.isNotEmpty) {
         final apiClient = settings.createApiClient(token);
-        final repository = TodoRepository(apiClient: apiClient, repo: settings.activeRepo);
+        final repository = TodoRepository(
+          apiClient: apiClient,
+          repo: settings.activeRepo,
+        );
         todoList.setRepository(repository);
         todoList.loadTodos();
       }
@@ -265,7 +275,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.list, (route) => false);
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.list,
+          (route) => false,
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -288,9 +302,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final activeRepo = settings.activeRepo;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('GitHub Settings'),
-      ),
+      appBar: AppBar(title: const Text('GitHub Settings')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -307,13 +319,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 12),
                 Text(
                   'GitHub Configuration',
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Configure your GitHub token and manage multiple repositories.',
-                  style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[700],
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
@@ -329,8 +345,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     border: const OutlineInputBorder(),
                     helperText: 'Requires "Issues: read & write" permission',
                     suffixIcon: IconButton(
-                      icon: Icon(_obscureToken ? Icons.visibility : Icons.visibility_off),
-                      onPressed: () => setState(() => _obscureToken = !_obscureToken),
+                      icon: Icon(
+                        _obscureToken ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscureToken = !_obscureToken),
                     ),
                   ),
                   autocorrect: false,
@@ -342,7 +361,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (repos.isNotEmpty) ...[
                   Text(
                     'Configured Repositories',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Card(
@@ -353,28 +374,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         final isSelected = r == activeRepo;
                         return ListTile(
                           leading: Icon(
-                            isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline,
+                            isSelected
+                                ? Icons.radio_button_checked
+                                : Icons.radio_button_unchecked,
+                            color: isSelected
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.outline,
                           ),
                           title: Text(
                             r,
                             style: TextStyle(
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: isSelected
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.onSurface,
                             ),
                           ),
-                          subtitle: isSelected ? const Text('Active Repository') : null,
+                          subtitle: isSelected
+                              ? const Text('Active Repository')
+                              : null,
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.wifi_tethering, size: 20),
+                                icon: const Icon(
+                                  Icons.wifi_tethering,
+                                  size: 20,
+                                ),
                                 tooltip: 'Test Connection to $r',
-                                onPressed: _isTestingConnection ? null : () => _testConnection(r),
+                                onPressed: _isTestingConnection
+                                    ? null
+                                    : () => _testConnection(r),
                               ),
                               if (repos.length > 1)
                                 IconButton(
-                                  icon: const Icon(Icons.delete_outline, size: 20),
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    size: 20,
+                                  ),
                                   tooltip: 'Remove $r',
                                   onPressed: () => _removeRepo(r),
                                 ),
@@ -390,8 +429,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // Add New Repository Section
                 Text(
-                  repos.isEmpty ? 'Target Repository' : 'Add Another Repository',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  repos.isEmpty
+                      ? 'Target Repository'
+                      : 'Add Another Repository',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -408,7 +451,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           helperText: 'e.g. etnt/mytodos',
                         ),
                         autocorrect: false,
-                        validator: (val) => _validateRepo(val, required: repos.isEmpty),
+                        validator: (val) =>
+                            _validateRepo(val, required: repos.isEmpty),
                       ),
                     ),
                     if (repos.isNotEmpty) ...[
@@ -420,7 +464,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           icon: const Icon(Icons.add),
                           label: const Text('Add'),
                           style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
                           ),
                         ),
                       ),
@@ -446,7 +493,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Expanded(
                           child: Text(
                             _testSuccessMessage!,
-                            style: TextStyle(color: Colors.green.shade900, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              color: Colors.green.shade900,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -469,7 +519,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Expanded(
                           child: Text(
                             _testErrorMessage!,
-                            style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              color: Colors.red.shade900,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -481,7 +534,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: _isTestingConnection
                       ? null
                       : () {
-                          final repoToTest = _newRepoController.text.trim().isNotEmpty
+                          final repoToTest =
+                              _newRepoController.text.trim().isNotEmpty
                               ? _newRepoController.text.trim()
                               : activeRepo;
                           _testConnection(repoToTest);

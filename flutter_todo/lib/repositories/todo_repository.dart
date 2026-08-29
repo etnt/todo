@@ -7,10 +7,7 @@ import '../services/issue_meta_codec.dart';
 /// Ports the business logic of Python `TodoManager`, maintaining priority ordering,
 /// metadata encoding, and CRUD operations.
 class TodoRepository {
-  TodoRepository({
-    required this.apiClient,
-    required this.repo,
-  });
+  TodoRepository({required this.apiClient, required this.repo});
 
   final GitHubApiClient apiClient;
   final String repo;
@@ -80,7 +77,9 @@ class TodoRepository {
     );
 
     if (todo == null) {
-      throw GitHubApiException('Failed to instantiate Todo from created issue response.');
+      throw GitHubApiException(
+        'Failed to instantiate Todo from created issue response.',
+      );
     }
 
     _todos.add(todo);
@@ -96,14 +95,10 @@ class TodoRepository {
       IssueMetadata(priority: todo.priority, deleted: false),
     );
 
-    await apiClient.patchIssue(
-      repo,
-      issueNumber,
-      {
-        'title': header,
-        'body': encodedBody,
-      },
-    );
+    await apiClient.patchIssue(repo, issueNumber, {
+      'title': header,
+      'body': encodedBody,
+    });
 
     todo.header = header;
     todo.body = body;
@@ -114,11 +109,7 @@ class TodoRepository {
     final issueNumber = _parseIssueNumber(todo);
     final newState = todo.isActive ? 'closed' : 'open';
 
-    await apiClient.patchIssue(
-      repo,
-      issueNumber,
-      {'state': newState},
-    );
+    await apiClient.patchIssue(repo, issueNumber, {'state': newState});
 
     if (newState == 'closed') {
       todo.markDone();
@@ -138,10 +129,7 @@ class TodoRepository {
       todo.priority = prevTodo.priority;
       prevTodo.priority = tempPriority;
 
-      await Future.wait([
-        _patchPriority(todo),
-        _patchPriority(prevTodo),
-      ]);
+      await Future.wait([_patchPriority(todo), _patchPriority(prevTodo)]);
 
       _sortTodos();
     }
@@ -158,10 +146,7 @@ class TodoRepository {
       todo.priority = nextTodo.priority;
       nextTodo.priority = tempPriority;
 
-      await Future.wait([
-        _patchPriority(todo),
-        _patchPriority(nextTodo),
-      ]);
+      await Future.wait([_patchPriority(todo), _patchPriority(nextTodo)]);
 
       _sortTodos();
     }
@@ -176,14 +161,10 @@ class TodoRepository {
       IssueMetadata(priority: todo.priority, deleted: true),
     );
 
-    await apiClient.patchIssue(
-      repo,
-      issueNumber,
-      {
-        'state': 'closed',
-        'body': encodedBody,
-      },
-    );
+    await apiClient.patchIssue(repo, issueNumber, {
+      'state': 'closed',
+      'body': encodedBody,
+    });
 
     _todos.remove(todo);
   }
@@ -205,11 +186,7 @@ class TodoRepository {
       todo.body,
       IssueMetadata(priority: todo.priority, deleted: false),
     );
-    await apiClient.patchIssue(
-      repo,
-      issueNumber,
-      {'body': encodedBody},
-    );
+    await apiClient.patchIssue(repo, issueNumber, {'body': encodedBody});
   }
 
   void _sortTodos() {

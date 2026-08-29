@@ -1,2 +1,6 @@
 env.sh
 todos.json
+android/
+build/
+todo.sh
+__pycache__/

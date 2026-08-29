@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../config/app_version.dart';
+
 import '../app_routes.dart';
 import '../models/todo.dart';
 import '../repositories/todo_repository.dart';
@@ -173,7 +175,22 @@ class _TodoListScreenState extends State<TodoListScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('TODOs', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              const Text('TODOs', style: TextStyle(fontWeight: FontWeight.bold)),
+                              const SizedBox(width: 6),
+                              Text(
+                                appVersion,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w300,
+                                ),
+                              ),
+                            ],
+                          ),
                           Text(
                             activeRepo.isNotEmpty ? activeRepo : 'Select repo',
                             style: theme.textTheme.labelSmall?.copyWith(
@@ -193,7 +210,22 @@ class _TodoListScreenState extends State<TodoListScreen> {
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('TODOs', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      const Text('TODOs', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 6),
+                      Text(
+                        appVersion,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w300,
+                        ),
+                      ),
+                    ],
+                  ),
                   if (activeRepo.isNotEmpty)
                     Text(
                       activeRepo,

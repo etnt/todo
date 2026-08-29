@@ -1,5 +1,10 @@
 # TODO Application
 
+**UPDATE** Now there exist a Mobile app (Android) available from the release page.
+It really is a general github issues interface, where you can configure and access
+multiple repos, but by creating a private repo you can use it for your personal
+shopping list and what not.
+
 A terminal-based full-screen todo application with priority management.
 
 ## Features

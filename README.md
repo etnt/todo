@@ -103,6 +103,8 @@ The repository includes a companion Flutter Android mobile application located i
 - 🔄 Seamless 2-way interoperability with the Python terminal client
 - 🔒 Secure GitHub token storage in Android Keystore via EncryptedSharedPreferences
 - ⚡ Pull-to-refresh, swipe actions (toggle done / delete), and drag-to-reorder priority
+- 📂 Multi-repository support with active repository selector menu
+
 
 ### Build & Run Android App
 ```bash

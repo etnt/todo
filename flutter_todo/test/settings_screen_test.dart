@@ -15,16 +15,51 @@ import 'fakes/fake_http_client.dart';
 
 /// Test implementation of [SettingsStore] keeping values purely in-memory.
 class FakeSettingsStore implements SettingsStore {
-  String? _repo;
+  final List<String> _repos = [];
+  String? _activeRepo;
   String? _token;
 
   @override
-  Future<String?> getRepo() async => _repo;
+  Future<List<String>> getRepos() async => List.unmodifiable(_repos);
 
   @override
-  Future<void> saveRepo(String repo) async {
-    _repo = repo.trim();
+  Future<String?> getActiveRepo() async => _activeRepo;
+
+  @override
+  Future<String?> getRepo() async => _activeRepo;
+
+  @override
+  Future<void> setActiveRepo(String repo) async {
+    final clean = repo.trim();
+    if (!_repos.contains(clean)) {
+      _repos.add(clean);
+    }
+    _activeRepo = clean;
   }
+
+  @override
+  Future<void> addRepo(String repo, {bool makeActive = true}) async {
+    final clean = repo.trim();
+    if (clean.isEmpty) return;
+    if (!_repos.contains(clean)) {
+      _repos.add(clean);
+    }
+    if (makeActive || _activeRepo == null) {
+      _activeRepo = clean;
+    }
+  }
+
+  @override
+  Future<void> removeRepo(String repo) async {
+    final clean = repo.trim();
+    _repos.remove(clean);
+    if (_activeRepo == clean) {
+      _activeRepo = _repos.isNotEmpty ? _repos.first : null;
+    }
+  }
+
+  @override
+  Future<void> saveRepo(String repo) => addRepo(repo, makeActive: true);
 
   @override
   Future<String?> getToken() async => _token;
@@ -36,12 +71,13 @@ class FakeSettingsStore implements SettingsStore {
 
   @override
   Future<bool> isConfigured() async {
-    return _repo != null && _repo!.isNotEmpty && _token != null && _token!.isNotEmpty;
+    return _activeRepo != null && _activeRepo!.isNotEmpty && _token != null && _token!.isNotEmpty;
   }
 
   @override
   Future<void> clear() async {
-    _repo = null;
+    _repos.clear();
+    _activeRepo = null;
     _token = null;
   }
 }
@@ -74,22 +110,38 @@ void main() {
     settingsStore = FakeSettingsStore();
   });
 
-  group('SettingsStore logic', () {
-    test('isConfigured is false initially and true when both repo and token are saved', () async {
+  group('SettingsStore multi-repo logic', () {
+    test('isConfigured is false initially and true when repo and token are saved', () async {
       expect(await settingsStore.isConfigured(), isFalse);
 
-      await settingsStore.saveRepo('owner/repo');
+      await settingsStore.addRepo('owner/repo1');
       expect(await settingsStore.isConfigured(), isFalse);
 
       await settingsStore.saveToken('ghp_token123');
       expect(await settingsStore.isConfigured(), isTrue);
 
-      expect(await settingsStore.getRepo(), 'owner/repo');
+      expect(await settingsStore.getRepo(), 'owner/repo1');
+      expect(await settingsStore.getRepos(), ['owner/repo1']);
       expect(await settingsStore.getToken(), 'ghp_token123');
+
+      // Add second repo
+      await settingsStore.addRepo('owner/repo2', makeActive: false);
+      expect(await settingsStore.getRepos(), ['owner/repo1', 'owner/repo2']);
+      expect(await settingsStore.getActiveRepo(), 'owner/repo1');
+
+      // Switch active repo
+      await settingsStore.setActiveRepo('owner/repo2');
+      expect(await settingsStore.getActiveRepo(), 'owner/repo2');
+
+      // Remove repo
+      await settingsStore.removeRepo('owner/repo2');
+      expect(await settingsStore.getRepos(), ['owner/repo1']);
+      expect(await settingsStore.getActiveRepo(), 'owner/repo1');
 
       await settingsStore.clear();
       expect(await settingsStore.isConfigured(), isFalse);
       expect(await settingsStore.getRepo(), isNull);
+      expect(await settingsStore.getRepos(), isEmpty);
       expect(await settingsStore.getToken(), isNull);
     });
   });
@@ -132,8 +184,10 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextFormField).at(0), 'owner/repo');
-      await tester.enterText(find.byType(TextFormField).at(1), 'ghp_test_token');
+      // Enter token first (at index 0)
+      await tester.enterText(find.byType(TextFormField).at(0), 'ghp_test_token');
+      // Enter repository (at index 1)
+      await tester.enterText(find.byType(TextFormField).at(1), 'owner/repo');
 
       await tester.tap(find.text('Test Connection'));
       await tester.pumpAndSettle();
@@ -151,15 +205,46 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextFormField).at(0), 'owner/repo');
-      await tester.enterText(find.byType(TextFormField).at(1), 'ghp_test_token');
+      await tester.enterText(find.byType(TextFormField).at(0), 'ghp_test_token');
+      await tester.enterText(find.byType(TextFormField).at(1), 'owner/repo');
 
       await tester.tap(find.text('Save & Open TODOs'));
       await tester.pumpAndSettle();
 
-      expect(await settingsStore.getRepo(), 'owner/repo');
+      expect(await settingsStore.getActiveRepo(), 'owner/repo');
       expect(await settingsStore.getToken(), 'ghp_test_token');
       expect(find.byType(TodoListScreen), findsOneWidget);
+    });
+
+    testWidgets('allows adding multiple repositories and switching active selection', (tester) async {
+      await settingsStore.addRepo('owner/repo-one');
+      await settingsStore.saveToken('ghp_test_token');
+
+      final settingsModel = SettingsModel(settingsStore: settingsStore)..loadSettings();
+      final todoListModel = TodoListModel();
+
+      await tester.pumpWidget(createSettingsTestApp(
+        settingsModel: settingsModel,
+        todoListModel: todoListModel,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('owner/repo-one'), findsOneWidget);
+      expect(find.text('Active Repository'), findsOneWidget);
+
+      // Add a second repository
+      await tester.enterText(find.byType(TextFormField).at(1), 'owner/repo-two');
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('owner/repo-two'), findsOneWidget);
+      expect(await settingsStore.getActiveRepo(), 'owner/repo-two');
+
+      // Tap on first repository to switch back
+      await tester.tap(find.text('owner/repo-one'));
+      await tester.pumpAndSettle();
+
+      expect(await settingsStore.getActiveRepo(), 'owner/repo-one');
     });
   });
 }

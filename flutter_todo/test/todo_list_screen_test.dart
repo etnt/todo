@@ -42,12 +42,12 @@ void main() {
   late SettingsModel settingsModel;
   late TodoListModel todoListModel;
 
-  setUp(() {
+  setUp(() async {
     settingsStore = FakeSettingsStore();
-    settingsStore.saveRepo('owner/test-repo');
-    settingsStore.saveToken('ghp_test');
+    await settingsStore.addRepo('owner/test-repo');
+    await settingsStore.saveToken('ghp_test');
 
-    settingsModel = SettingsModel(settingsStore: settingsStore);
+    settingsModel = SettingsModel(settingsStore: settingsStore)..loadSettings();
     todoListModel = TodoListModel();
   });
 
@@ -134,6 +134,54 @@ void main() {
       expect(find.byType(ErrorBanner), findsOneWidget);
       expect(find.textContaining('Network Failure'), findsOneWidget);
       expect(find.text('Retry'), findsOneWidget);
+    });
+
+    testWidgets('provides popup menu when multiple repositories are configured', (tester) async {
+      await settingsStore.addRepo('owner/second-repo', makeActive: false);
+
+      final fakeClient = FakeClient((request) {
+        if (request.url.path == '/repos/owner/second-repo/issues') {
+          return http.Response(
+            jsonEncode([
+              {
+                'number': 10,
+                'title': 'Task in Repo 2',
+                'body': 'Body\n\n<!-- todo-meta: {"priority":0,"deleted":false} -->',
+                'state': 'open',
+              },
+            ]),
+            200,
+          );
+        }
+        return http.Response('[]', 200);
+      });
+
+      settingsModel = SettingsModel(
+        settingsStore: settingsStore,
+        clientFactory: (token) => GitHubApiClient(token: token, httpClient: fakeClient),
+      );
+      await settingsModel.loadSettings();
+
+      await tester.pumpWidget(createTodoListTestApp(
+        settingsModel: settingsModel,
+        todoListModel: todoListModel,
+      ));
+      await tester.pumpAndSettle();
+
+      // Tap on the repo dropdown title
+      expect(find.byType(PopupMenuButton<String>), findsOneWidget);
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+
+      expect(find.text('owner/test-repo'), findsWidgets);
+      expect(find.text('owner/second-repo'), findsOneWidget);
+
+      // Select second repo
+      await tester.tap(find.text('owner/second-repo'));
+      await tester.pumpAndSettle();
+
+      expect(settingsModel.activeRepo, 'owner/second-repo');
+      expect(find.text('Task in Repo 2'), findsOneWidget);
     });
   });
 

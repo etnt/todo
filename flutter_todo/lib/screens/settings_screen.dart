@@ -7,7 +7,7 @@ import '../services/github_api_client.dart';
 import '../state/settings_model.dart';
 import '../state/todo_list_model.dart';
 
-/// Screen for configuring GitHub repository coordinate and personal access token.
+/// Screen for configuring GitHub repository coordinates (multi-repo support) and Personal Access Token.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -17,7 +17,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _repoController;
+  late final TextEditingController _newRepoController;
   late final TextEditingController _tokenController;
 
   bool _obscureToken = true;
@@ -29,20 +29,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     final settings = context.read<SettingsModel>();
-    _repoController = TextEditingController(text: settings.repo);
+    _newRepoController = TextEditingController();
     _tokenController = TextEditingController(text: settings.token);
   }
 
   @override
   void dispose() {
-    _repoController.dispose();
+    _newRepoController.dispose();
     _tokenController.dispose();
     super.dispose();
   }
 
-  String? _validateRepo(String? value) {
+  String? _validateRepo(String? value, {bool required = true}) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter repository (e.g. owner/repo)';
+      if (required) return 'Please enter repository (e.g. owner/repo)';
+      return null;
     }
     final trimmed = value.trim();
     if (!RegExp(r'^[^/\s]+/[^/\s]+$').hasMatch(trimmed)) {
@@ -58,8 +59,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return null;
   }
 
-  Future<void> _testConnection() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _testConnection(String repo) async {
+    final token = _tokenController.text.trim();
+    if (token.isEmpty) {
+      setState(() {
+        _testErrorMessage = 'Please enter a GitHub token first.';
+        _testSuccessMessage = null;
+      });
+      return;
+    }
+
+    final repoValidationError = _validateRepo(repo, required: true);
+    if (repoValidationError != null) {
+      setState(() {
+        _testErrorMessage = repoValidationError;
+        _testSuccessMessage = null;
+      });
+      return;
+    }
 
     setState(() {
       _isTestingConnection = true;
@@ -69,10 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final settings = context.read<SettingsModel>();
     try {
-      final msg = await settings.testConnection(
-        _repoController.text,
-        _tokenController.text,
-      );
+      final msg = await settings.testConnection(repo, token);
       if (mounted) {
         setState(() {
           _testSuccessMessage = msg;
@@ -95,26 +109,161 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _saveSettings() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _addNewRepo() async {
+    final newRepo = _newRepoController.text.trim();
+    final token = _tokenController.text.trim();
+
+    if (token.isEmpty) {
+      _formKey.currentState!.validate();
+      return;
+    }
+
+    final repoError = _validateRepo(newRepo, required: true);
+    if (repoError != null) {
+      _formKey.currentState!.validate();
+      return;
+    }
 
     final settings = context.read<SettingsModel>();
     final todoList = context.read<TodoListModel>();
 
     try {
-      final repo = _repoController.text.trim();
-      final token = _tokenController.text.trim();
+      await settings.saveSettings(newRepo, token);
 
-      await settings.saveSettings(repo, token);
+      final apiClient = settings.createApiClient(token);
+      final repository = TodoRepository(apiClient: apiClient, repo: newRepo);
+      todoList.setRepository(repository);
+      todoList.loadTodos();
 
-      final apiClient = GitHubApiClient(token: token);
+      _newRepoController.clear();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Repository "$newRepo" added and selected!'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add repository: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _selectRepo(String repo) async {
+    final settings = context.read<SettingsModel>();
+    final todoList = context.read<TodoListModel>();
+
+    try {
+      await settings.selectActiveRepo(repo);
+
+      final token = settings.token;
+      final apiClient = settings.createApiClient(token);
       final repository = TodoRepository(apiClient: apiClient, repo: repo);
       todoList.setRepository(repository);
       todoList.loadTodos();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings saved successfully!')),
+          SnackBar(
+            content: Text('Switched active repository to "$repo"'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to switch repository: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeRepo(String repo) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove Repository?'),
+        content: Text('Are you sure you want to remove "$repo" from your list? Issues in GitHub will not be affected.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final settings = context.read<SettingsModel>();
+      final todoList = context.read<TodoListModel>();
+
+      await settings.removeRepo(repo);
+
+      if (settings.activeRepo.isNotEmpty) {
+        final apiClient = settings.createApiClient();
+        final repository = TodoRepository(apiClient: apiClient, repo: settings.activeRepo);
+        todoList.setRepository(repository);
+        todoList.loadTodos();
+      }
+    }
+  }
+
+  Future<void> _saveAndOpenTodos() async {
+    final settings = context.read<SettingsModel>();
+    final token = _tokenController.text.trim();
+    final newRepo = _newRepoController.text.trim();
+
+    if (token.isEmpty) {
+      _formKey.currentState!.validate();
+      return;
+    }
+
+    if (settings.repos.isEmpty && newRepo.isEmpty) {
+      _formKey.currentState!.validate();
+      return;
+    }
+
+    final todoList = context.read<TodoListModel>();
+
+    try {
+      if (newRepo.isNotEmpty) {
+        await settings.saveSettings(newRepo, token);
+      } else {
+        await settings.settingsStore.saveToken(token);
+        await settings.loadSettings();
+      }
+
+      if (settings.activeRepo.isNotEmpty) {
+        final apiClient = settings.createApiClient(token);
+        final repository = TodoRepository(apiClient: apiClient, repo: settings.activeRepo);
+        todoList.setRepository(repository);
+        todoList.loadTodos();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Settings saved successfully!'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
         Navigator.pushNamedAndRemoveUntil(context, AppRoutes.list, (route) => false);
       }
@@ -124,6 +273,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SnackBar(
             content: Text('Failed to save settings: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -134,6 +284,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final settings = context.watch<SettingsModel>();
+    final repos = settings.repos;
+    final activeRepo = settings.activeRepo;
 
     return Scaffold(
       appBar: AppBar(
@@ -154,32 +306,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Connect to GitHub',
+                  'GitHub Configuration',
                   style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'TODOs will be stored and synchronized as GitHub Issues in your chosen repository.',
+                  'Configure your GitHub token and manage multiple repositories.',
                   style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
-
-                // Repository Input
-                TextFormField(
-                  controller: _repoController,
-                  decoration: const InputDecoration(
-                    labelText: 'GitHub Repository',
-                    hintText: 'owner/repository',
-                    prefixIcon: Icon(Icons.folder_outlined),
-                    border: OutlineInputBorder(),
-                    helperText: 'e.g. etnt/mytodos',
-                  ),
-                  autocorrect: false,
-                  validator: _validateRepo,
-                ),
-                const SizedBox(height: 16),
 
                 // Personal Access Token Input
                 TextFormField(
@@ -198,6 +335,97 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   autocorrect: false,
                   validator: _validateToken,
+                ),
+                const SizedBox(height: 24),
+
+                // Configured Repositories Card
+                if (repos.isNotEmpty) ...[
+                  Text(
+                    'Configured Repositories',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    elevation: 0,
+                    color: theme.colorScheme.surfaceContainerLow,
+                    child: Column(
+                      children: repos.map((r) {
+                        final isSelected = r == activeRepo;
+                        return ListTile(
+                          leading: Icon(
+                            isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline,
+                          ),
+                          title: Text(
+                            r,
+                            style: TextStyle(
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          subtitle: isSelected ? const Text('Active Repository') : null,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.wifi_tethering, size: 20),
+                                tooltip: 'Test Connection to $r',
+                                onPressed: _isTestingConnection ? null : () => _testConnection(r),
+                              ),
+                              if (repos.length > 1)
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, size: 20),
+                                  tooltip: 'Remove $r',
+                                  onPressed: () => _removeRepo(r),
+                                ),
+                            ],
+                          ),
+                          onTap: () => _selectRepo(r),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // Add New Repository Section
+                Text(
+                  repos.isEmpty ? 'Target Repository' : 'Add Another Repository',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _newRepoController,
+                        decoration: InputDecoration(
+                          labelText: 'Repository',
+                          hintText: 'owner/repository',
+                          prefixIcon: const Icon(Icons.folder_outlined),
+                          border: const OutlineInputBorder(),
+                          helperText: 'e.g. etnt/mytodos',
+                        ),
+                        autocorrect: false,
+                        validator: (val) => _validateRepo(val, required: repos.isEmpty),
+                      ),
+                    ),
+                    if (repos.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: FilledButton.tonalIcon(
+                          onPressed: _addNewRepo,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 16),
 
@@ -250,7 +478,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // Action Buttons
                 OutlinedButton.icon(
-                  onPressed: _isTestingConnection ? null : _testConnection,
+                  onPressed: _isTestingConnection
+                      ? null
+                      : () {
+                          final repoToTest = _newRepoController.text.trim().isNotEmpty
+                              ? _newRepoController.text.trim()
+                              : activeRepo;
+                          _testConnection(repoToTest);
+                        },
                   icon: _isTestingConnection
                       ? const SizedBox(
                           width: 16,
@@ -263,7 +498,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 12),
 
                 FilledButton.icon(
-                  onPressed: settings.isLoading ? null : _saveSettings,
+                  onPressed: settings.isLoading ? null : _saveAndOpenTodos,
                   icon: const Icon(Icons.save),
                   label: settings.isLoading
                       ? const Text('Saving...')
@@ -277,4 +512,3 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
-

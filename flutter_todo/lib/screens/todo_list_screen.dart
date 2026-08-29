@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../app_routes.dart';
 import '../models/todo.dart';
+import '../repositories/todo_repository.dart';
 import '../state/settings_model.dart';
 import '../state/todo_list_model.dart';
 import '../widgets/empty_state.dart';
@@ -11,7 +12,8 @@ import '../widgets/todo_list_tile.dart';
 import 'todo_detail_screen.dart';
 import 'todo_edit_screen.dart';
 
-/// Main TODO list screen with tabs, pull-to-refresh, reordering, and swipe actions.
+/// Main TODO list screen with tabs, pull-to-refresh, reordering, swipe actions,
+/// and quick active repository switching menu.
 class TodoListScreen extends StatefulWidget {
   const TodoListScreen({super.key});
 
@@ -44,6 +46,41 @@ class _TodoListScreenState extends State<TodoListScreen> {
       model.moveDown(target);
     } else {
       model.moveUp(target);
+    }
+  }
+
+  Future<void> _switchActiveRepo(String newRepo) async {
+    final settings = context.read<SettingsModel>();
+    final todoList = context.read<TodoListModel>();
+
+    if (newRepo == settings.activeRepo) return;
+
+    try {
+      await settings.selectActiveRepo(newRepo);
+
+      final apiClient = settings.createApiClient();
+      final repository = TodoRepository(apiClient: apiClient, repo: newRepo);
+      todoList.setRepository(repository);
+      await todoList.loadTodos();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Switched to repository "$newRepo"'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to switch repository: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -93,21 +130,79 @@ class _TodoListScreenState extends State<TodoListScreen> {
     final todoList = context.watch<TodoListModel>();
     final todos = todoList.currentTodos;
 
+    final repos = settings.repos;
+    final activeRepo = settings.activeRepo;
+
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('TODOs', style: TextStyle(fontWeight: FontWeight.bold)),
-            if (settings.repo.isNotEmpty)
-              Text(
-                settings.repo,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+        title: repos.length > 1
+            ? PopupMenuButton<String>(
+                tooltip: 'Select Active Repository',
+                onSelected: _switchActiveRepo,
+                itemBuilder: (context) {
+                  return repos.map((r) {
+                    final isCurrent = r == activeRepo;
+                    return PopupMenuItem<String>(
+                      value: r,
+                      child: Row(
+                        children: [
+                          Icon(
+                            isCurrent ? Icons.check_circle : Icons.circle_outlined,
+                            size: 18,
+                            color: isCurrent ? theme.colorScheme.primary : theme.colorScheme.outline,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              r,
+                              style: TextStyle(
+                                fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                                color: isCurrent ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList();
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('TODOs', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            activeRepo.isNotEmpty ? activeRepo : 'Select repo',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_drop_down, size: 20),
+                  ],
                 ),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('TODOs', style: TextStyle(fontWeight: FontWeight.bold)),
+                  if (activeRepo.isNotEmpty)
+                    Text(
+                      activeRepo,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
               ),
-          ],
-        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),

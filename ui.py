@@ -13,7 +13,8 @@ class TodoUI:
         self.current_view = "active"
         self.selected_idx = 0
         self.scroll_offset = 0
-        
+        self.repo_selected_idx = 0
+
         curses.curs_set(0)
         curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
         curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
@@ -28,18 +29,31 @@ class TodoUI:
         else:
             return self.manager.get_all_todos()
 
+    def backend_label(self) -> str:
+        active = self.manager.active_repo
+        if active is None or active.is_local:
+            return "local"
+        return active.name
+
     def draw_status_bar(self):
         height, width = self.stdscr.getmaxyx()
-        status = f" View: {self.current_view.upper()} | a:Add Enter:View/Edit d:Done Tab:Switch ↑↓:Nav p/n:Priority Del:Delete q:Quit "
+        status = f" View: {self.current_view.upper()} | Backend: {self.backend_label()} | a:Add Enter:View/Edit d:Done Tab:Switch ↑↓:Nav p/n:Priority Del:Delete r:Repos q:Quit "
         self.stdscr.attron(curses.color_pair(1))
         self.stdscr.addstr(height - 1, 0, status[:width - 1].ljust(width - 1))
         self.stdscr.attroff(curses.color_pair(1))
+        if self.manager.last_error:
+            self.stdscr.attron(curses.color_pair(3))
+            self.stdscr.addstr(
+                height - 2, 0,
+                f" {self.manager.last_error}"[:width - 1].ljust(width - 1),
+            )
+            self.stdscr.attroff(curses.color_pair(3))
 
     def draw_todos(self):
         height, width = self.stdscr.getmaxyx()
         todos = self.get_current_todos()
         
-        self.stdscr.addstr(0, 0, f"TODO List - {self.current_view.upper()}".ljust(width - 1), curses.A_BOLD)
+        self.stdscr.addstr(0, 0, f"TODO List [{self.backend_label()}] - {self.current_view.upper()}".ljust(width - 1), curses.A_BOLD)
         self.stdscr.addstr(1, 0, "─" * (width - 1))
 
         visible_height = height - 4
@@ -319,6 +333,123 @@ class TodoUI:
         curses.curs_set(0)
         self.manager.update_todo(todo, header, body)
 
+    def _show_message(self, message: str):
+        height, width = self.stdscr.getmaxyx()
+        curses.curs_set(0)
+        self.stdscr.attron(curses.color_pair(3))
+        self.stdscr.addstr(height - 1, 0, f" {message}"[:width - 1].ljust(width - 1))
+        self.stdscr.attroff(curses.color_pair(3))
+        self.stdscr.refresh()
+        self.stdscr.getch()
+
+    def repo_manager_screen(self):
+        """List configured issue backends; switch, add or remove them."""
+        self.repo_selected_idx = 0
+        while True:
+            height, width = self.stdscr.getmaxyx()
+            self.stdscr.clear()
+            self.stdscr.addstr(0, 0, "Issue Backends".ljust(width - 1), curses.A_BOLD)
+            self.stdscr.addstr(1, 0, "─" * (width - 1))
+
+            repos = self.manager.repo_store.repos
+            if self.repo_selected_idx >= len(repos):
+                self.repo_selected_idx = max(0, len(repos) - 1)
+            active_name = self.manager.repo_store.active_name
+
+            for i, repo in enumerate(repos[:height - 4]):
+                y = i + 2
+                marker = "→" if i == self.repo_selected_idx else " "
+                active_tag = " [active]" if repo.name == active_name else ""
+                if repo.is_local:
+                    description = "Local JSON storage (todos.json)"
+                else:
+                    description = repo.repo
+                line = f"{marker} {repo.name.ljust(20)} {description}{active_tag}"
+                if repo.name == active_name:
+                    self.stdscr.attron(curses.color_pair(2))
+                    self.stdscr.addstr(y, 0, line[:width - 1])
+                    self.stdscr.attroff(curses.color_pair(2))
+                elif i == self.repo_selected_idx:
+                    self.stdscr.attron(curses.color_pair(1))
+                    self.stdscr.addstr(y, 0, line[:width - 1].ljust(width - 1))
+                    self.stdscr.attroff(curses.color_pair(1))
+                else:
+                    self.stdscr.addstr(y, 0, line[:width - 1])
+
+            self.stdscr.attron(curses.color_pair(1))
+            self.stdscr.addstr(height - 1, 0, " ↑↓:Nav Enter:Switch a:Add Del:Delete q/Esc:Back ".ljust(width - 1))
+            self.stdscr.attroff(curses.color_pair(1))
+            self.stdscr.refresh()
+
+            key = self.stdscr.getch()
+            if key in (ord('q'), 27):
+                return
+            elif key == curses.KEY_UP:
+                self.repo_selected_idx = max(0, self.repo_selected_idx - 1)
+            elif key == curses.KEY_DOWN:
+                self.repo_selected_idx = min(len(repos) - 1, self.repo_selected_idx + 1)
+            elif key in (curses.KEY_ENTER, 10, 13):
+                repo = repos[self.repo_selected_idx]
+                try:
+                    self.manager.set_active_repo(repo.name)
+                except ValueError as error:
+                    self._show_message(str(error))
+                else:
+                    self.selected_idx = 0
+                    self.scroll_offset = 0
+                    return
+            elif key == ord('a'):
+                self.add_repo_form()
+            elif key in (curses.KEY_DC, 330):
+                repo = repos[self.repo_selected_idx]
+                try:
+                    self.manager.repo_store.remove_repo(repo.name)
+                except ValueError as error:
+                    self._show_message(str(error))
+                self.repo_selected_idx = min(
+                    self.repo_selected_idx,
+                    max(0, len(self.manager.repo_store.repos) - 1),
+                )
+
+    def add_repo_form(self):
+        height, width = self.stdscr.getmaxyx()
+        self.stdscr.clear()
+        self.stdscr.addstr(0, 0, "Add Issue Backend".ljust(width - 1), curses.A_BOLD)
+        self.stdscr.addstr(1, 0, "─" * (width - 1))
+
+        name_label = "Name:"
+        slug_label = "Repo (owner/name):"
+        token_label = "Token (optional, blank = $GITHUB_TOKEN):"
+        self.stdscr.addstr(3, 2, name_label)
+        self.stdscr.addstr(5, 2, slug_label)
+        self.stdscr.addstr(7, 2, token_label)
+
+        self.stdscr.attron(curses.color_pair(1))
+        self.stdscr.addstr(height - 1, 0, " Enter values. Enter confirms, Esc cancels ".ljust(width - 1))
+        self.stdscr.attroff(curses.color_pair(1))
+        self.stdscr.refresh()
+
+        name = self.edit_single_line(self.stdscr, 3, 2 + len(name_label) + 2, "", width - 10)
+        if name is None or not name:
+            curses.curs_set(0)
+            return
+
+        slug = self.edit_single_line(self.stdscr, 5, 2 + len(slug_label) + 2, "", width - 10)
+        if slug is None or not slug:
+            curses.curs_set(0)
+            return
+
+        token = self.edit_single_line(self.stdscr, 7, 2 + len(token_label) + 2, "", width - 10)
+        if token is None:
+            curses.curs_set(0)
+            return
+
+        curses.curs_set(0)
+        try:
+            self.manager.repo_store.add_repo(name, slug, token.strip() or None)
+        except ValueError as error:
+            self._show_message(str(error))
+
     def add_todo_form(self):
         height, width = self.stdscr.getmaxyx()
         self.stdscr.clear()
@@ -362,6 +493,8 @@ class TodoUI:
             
             if key == ord('q'):
                 break
+            elif key == ord('r'):
+                self.repo_manager_screen()
             elif key == ord('a'):
                 self.add_todo_form()
             elif key == ord('\t'):

@@ -5,20 +5,40 @@ import urllib.request
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from models import Todo
+from repo_config import RepoConfig, RepoConfigStore
 
 GITHUB_ISSUES_PAGE_SIZE = 100
 
 
 class TodoManager:
-    def __init__(self, filename: str = "todos.json"):
+    def __init__(self, filename: str = "todos.json", repo_store: Optional[RepoConfigStore] = None):
         self.filename = filename
-        self.github_repo = os.environ.get("TODO_GITHUB_REPO")
-        self.github_token = os.environ.get("GITHUB_TOKEN")
-        if self.github_repo and not self.github_token:
-            raise RuntimeError("GITHUB_TOKEN is required when TODO_GITHUB_REPO is set")
+        self.repo_store = repo_store or RepoConfigStore()
+        self.active_repo: Optional[RepoConfig] = self.repo_store.get_active()
         self.todos: List[Todo] = []
         self.last_error: Optional[str] = None
+        if self.github_repo and not self._active_token():
+            raise RuntimeError("GITHUB_TOKEN is required when a GitHub repo backend is selected")
         self.load()
+
+    @property
+    def github_repo(self) -> Optional[str]:
+        return self.active_repo.repo if self.active_repo else None
+
+    def set_active_repo(self, repo_name: str):
+        repo = self.repo_store.get(repo_name)
+        if repo is None:
+            raise ValueError(f"Unknown repo backend: {repo_name}")
+        if not repo.is_local and not self.repo_store.token_for(repo):
+            raise ValueError("GITHUB_TOKEN is required to use GitHub repo backends")
+        self.repo_store.set_active(repo_name)
+        self.active_repo = repo
+        self.load()
+
+    def _active_token(self) -> Optional[str]:
+        if self.active_repo is None:
+            return None
+        return self.repo_store.token_for(self.active_repo)
 
     def load(self):
         if self.github_repo:
@@ -158,8 +178,9 @@ class TodoManager:
             "Content-Type": "application/json",
             "X-GitHub-Api-Version": "2022-11-28",
         }
-        if self.github_token:
-            headers["Authorization"] = f"Bearer {self.github_token}"
+        token = self._active_token()
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
         return headers
 
     def _request(self, method: str, path: str, payload: Optional[Dict] = None):

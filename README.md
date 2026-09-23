@@ -17,6 +17,10 @@ works for personal lists, such as a shopping list.
 - Manage several GitHub repositories in the terminal app.
 - Use the full-screen terminal interface.
 
+## Screenshot of mobile app
+
+<a href="screenshots/screenshot.jpeg"><img src="screenshots/screenshot.jpeg" alt="Screenshot" width="19%"></a>
+
 ## Install and start the terminal app
 
 The terminal app needs Python 3.6 or later and `curses`.
